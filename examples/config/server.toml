@@ -1,0 +1,195 @@
+# crbs-server 全局配置 — /etc/crbs/server.toml
+#
+# 该文件仅被 crbs-server 读取，用于配置 HTTP API daemon 的监听地址、
+# 认证、公开访问、Web UI、日志脱敏、TLS 证书以及是否允许产品管理端点。
+
+# 监听地址。CLI 的 `--listen` 选项优先级高于此值。
+listen = "127.0.0.1:9090"
+
+# Hub 本地构建并发上限。0 表示使用 CPU 数。
+# 仅限制 Hub 本机执行的本地构建；分发到 Worker 的分布式构建不受此限，
+# 其并发由各 worker.toml 的 `capacity` 独立约束。
+max_local_builds = 0
+
+# Hub 本地构建超时兜底（秒），默认 86400（24h）；0 = 关闭兜底（不限时）。
+# 仅当构建请求未显式指定 timeout 时生效：hang 住的本地构建会永久占用
+# building 行与 build_semaphore（crbs_pid 为 server 进程、zombie 修复跳过，
+# 直到 server 重启），兜底保证其最终以 timeout 终态释放。显式 timeout 优先
+# （含 timeout=0 = 显式无限）；worker 侧远程构建用 worker.toml 的
+# `build_timeout_secs` 独立兜底。
+build_timeout_secs = 86400
+
+# 调度器模式：auto = worker 优先分发 + 本地并发兜底（默认）；
+# local_only = 仅本地执行；distributed_only = 仅分发 worker。
+scheduler_mode = "auto"
+
+# 硬下限消费总闸（默认 false）：true 时调度按构建声明的放置下限
+#（builds.req_min_*，缺维回退画像表 declared 声明）过滤可承载节点，
+# 要求维遥测缺失按 fail-closed 拒（声明是契约；与水位门的 fail-open 有意
+# 分叉）；false 时不因硬下限改变派发。init 分配与后台档（priority < 0）
+# 构建豁免。
+# resource_requirements_enabled = false
+
+# 学习面权重消费开关（默认 true）：true 时 Σ 水位权重读包资源画像表
+#（censored 期 mem 取 max(ema, max)，缺维回退产品 resource_overrides）；
+# false 时 Σ 只剩 resource_overrides。画像写入
+# 无条件，不受本键影响。
+# resource_profile_weights_enabled = true
+
+# hub 本地构建水位门（默认 false，独立开关）：true 时本地取件前按 hub 自采
+# 遥测（/proc load1/mem）+ 在跑本地构建权重合计 + 逐候选权重判水位（被拒
+# 候选顺延），超限跳过本 tick 本地取件（不阻塞远端派发，拒绝原因进排队
+# 归因）；false 时本地调度行为与升级前逐位一致（hub 兼任 API/UI 服务，默认
+# 不给本地构建加门）。
+# 本地硬下限随 resource_requirements_enabled，不受本键控制。
+# resource_local_watermark_enabled = false
+
+# 分布式派发水位门总闸（默认 true）：true 时 planner 按目标 worker 实时遥测
+# + 在跑权重合计 + 候选权重判内存/CPU 水位；false 时放置序选中即派发（硬
+# 下限过滤不受影响；遥测缺失恒 fail-open）。与本地水位门独立，可单独关。
+# resource_dispatch_watermark_enabled = true
+
+# 硬下限停滞提示阈值（秒，默认 3600）：构建因硬下限全拒持续该时长后追加
+# 一条 note（原因 + 解绑方式），每段 pending 至多提示一次（重启后可能
+# 再提示一次）；0 = 关闭提示。
+# resource_hard_req_stall_secs = 3600
+
+# heavy steering（默认 false）：true 时 heavy 候选（req 声明存在 / 有效
+# 权重达阈值 / SRPM ≥ resource_heavy_srpm_bytes）在过完全部 eligible 过滤
+# （架构/空槽/init 门/硬下限）的存活节点里按归一化余量评分全序选点：
+# mem 维 (mem_total × resource_mem_watermark − used − Σmem)/mem_total、
+# cpu 维 (ncpu − load1 − Σcpu)/ncpu，节点得分 = 两维 min（瓶颈维归一）；
+# 某维遥测缺失该维不参与，两维全缺的节点排有分节点之后，全组无分退序首；
+# 水位门照走，非 heavy 候选语义不变。false 时所有候选走 least-loaded 序首个，
+# 与 least-loaded 路径逐位一致；KPI 无改善时关本开关即回到该形态。
+# resource_steering_enabled = false
+
+# 学习门影子记录（默认 false）：true 时对 CAS 领取成功的实际落点节点、
+# 且画像已学习（learned_samples ≥ 1）的键逐门评估并落 debug 决策日志——
+# 内存门：节点可用内存（mem_total_kb × (1 − mem_used_pct/100)）≥
+# learned_max_mem_kb × 1.2；tmpfs 容量门：节点 tmpfs 余量（容量按
+# mem_total_kb/2 估算、已用影子期按 0）≥ learned_max_tmpfs_kb。
+# 影子只记录不实际拒绝，派发行为 / 放置序 / 水位门不受影响；未学习键与
+# 遥测缺失节点直通；false 时无额外画像回源、无日志、派发零变化。
+# resource_learned_gates_enabled = false
+
+# 学习 tmpfs 门转正（默认 false，独立于影子开关）：true 时 planner 遍历中
+# 水位通过后追加 tmpfs 门——节点 tmpfs 容量（mem_total_kb/2，与影子同口径）
+# < 该候选学习 tmpfs 峰值即在该节点拒绝、顺延下一节点，全组拒绝归因记
+# watermark_tmpfs 维（crbs_dispatch_admit_rejects_total）。fail-open 同影子：
+# 未学习键 / 学习值缺失 / 节点 mem_total 缺失放行，容量恰好压线 = 放行。
+# false 时门只随 resource_learned_gates_enabled 影子记录，派发行为与基线
+# 逐位一致。
+# resource_tmpfs_gate_enforced = false
+
+# 准入内存水位系数（默认 0.90）：used + Σ权重 ≥ mem_total × 系数 即拒该
+# 节点（内存维）。调低收紧、调高放宽（>1 = 事实关内存门，实验语义）；
+# ≤0 / 非法值启动报错拒启。
+# resource_mem_watermark = 0.90
+
+# 准入 CPU 水位系数（默认 1.00）：load1 + Σp90 ≥ ncpu × 系数 即拒该节点
+#（CPU 维）。load1 可超 ncpu，>1 的放宽（如 1.05 容忍 5% 过载）属实验
+# 语义；≤0 / 非法值启动报错拒启。
+# resource_cpu_watermark = 1.00
+
+# 接受构建前要求 crbs_root 上保留的最小剩余磁盘空间（GB），不足时返回 422。
+# 0 表示禁用磁盘水位检查。
+min_free_disk_gb = 1
+
+# DB 历史行保留天数（默认 90，0 禁用）：超过该天数的 audit_logs/worker_tasks/
+# builds/tasks 行由后台保留任务删除（builds 仅删磁盘 GC 已清理过的历史行，
+# 不产生孤儿目录）。磁盘产物由 result GC 负责，不在此列。
+db_retention_days = 90
+
+# DB 连接池上限（可选）：优先级 CRBS_DB_MAX_CONNECTIONS 环境变量 > 此键 >
+# 内置默认 8；非法值（<1）warn 后回退下一级。仅 crbs-server 进程消费；
+# CLI / worker 侧只认环境变量。取消注释即覆盖默认。
+# db_max_connections = 16
+
+# 资源画像轻包门槛（KB）：succeeded 构建峰值内存（anon 口径）低于该值时
+# 不写包资源画像行（builds 行资源列照常记录；OOM 删失通道不受门槛——
+# OOM 样本必超门槛，轻包变重靠删失自愈）。0 = 不过滤。
+# resource_profile_min_peak_rss_kb = 1048576
+
+# OOM 删失抬升系数：node-OOM 样本按 观测峰值 × 本系数 抬升画像 max
+#（只抬不降）。必须为 >= 1.0 的有限值，否则启动报错。
+# resource_censor_headroom = 1.25
+
+# heavy 判定的 SRPM 体积阈值（字节，默认 100MiB）：srpm_size_bytes 达到该值
+# 的构建按 heavy steering（未画像重包的补洞；画像包走权重阈值臂）。0 = 该
+# 臂禁用。仅 resource_steering_enabled = true 时被消费。
+# resource_heavy_srpm_bytes = 104857600
+
+# 是否允许产品管理端点（POST /products/:name/init、DELETE /products/:name/clean）。
+# CLI 的 `--allow-product-management` 选项优先级高于此值。
+allow_product_management = false
+
+# 是否启用 API Bearer Token 认证。默认 true；生产环境不建议关闭。
+# 关闭后仅允许 loopback 监听，用于本地开发。
+# 认证使用 DB-backed 用户 token（`crbs_tok_…`，由 `crbs-server token create` 生成）
+# 和 Worker secret（`crbs_wkr_…`，由 `crbs-server worker add` 生成）。
+auth_enabled = true
+
+# 优雅退出等待超时（秒）。超过此时间后 server 会强制终止活动构建。
+# CLI 的 `--shutdown-timeout` 选项优先级高于此值。
+shutdown_timeout_secs = 60
+
+# SRPM 上传大小上限（MB）。nginx 的 client_max_body_size 需要大于等于此值。
+upload_max_size_mb = 500
+
+# 提交限流（per-user 固定窗口，进程内存态）：作用于 POST /api/v1/builds 与
+# POST /api/v1/tasks/{id}/rebuild|reproduce。默认关闭；启用时窗口参数
+# requests/per_secs 必须 >= 1，否则启动报错。批量重建工作流慎用低阈值（会 429）。
+# [submit_rate_limit]
+# enabled = false
+# requests = 30
+# per_secs = 60
+
+# 产物目录覆盖（可选）。未指定时使用 {crbs_root}/results。
+# result_dir = "/var/lib/crbs/results"
+
+# SRPM 上传暂存区目录（可选）。未指定时使用 {crbs_root}/uploads。
+# upload_dir = "/var/lib/crbs/uploads"
+
+# server 数据根目录（引擎世界与 server 世界分离）：crbs-server 专属，决定 state DB /
+# uploads / artifacts / srpm token key / csrf key / run_dir 的位置。缺省
+# /var/lib/crbs；crbs.toml 的 crbs_root 语义收归引擎世界（默认
+# /var/lib/crbs-engine），server 不再读它。
+# crbs_root = "/var/lib/crbs"
+
+# SQLite 数据库文件路径（可选）。未指定时使用 {crbs_root}/crbs.db。
+# PostgreSQL 部署改在 /etc/crbs/crbs.toml 配置 `database_url`
+# （postgres://user:pass@host/dbname）——该键属于 crbs.toml，
+# 写在本文件会被 deny_unknown_fields 拒绝。
+# state_db_path = "/var/lib/crbs/crbs.db"
+
+# Worker 日志/产物持久化目录（可选）。未指定时使用 {crbs_root}/artifacts。
+# artifact_dir = "/var/lib/crbs/artifacts"
+
+# 公开访问控制：三个开关（默认全开）分别决定未认证访客能否查看 Web UI
+# 页面（view）、构建日志（logs）与下载产物（download）。
+# 写操作（提交、取消、GC、产品管理、admin、Worker）始终需要认证，不受本段影响。
+# 内网/受信网络部署可保持默认全开；若 server 暴露不受信网络（公网等），
+# 必须显式收紧，至少 logs/download 置 false（构建日志可能含内网环境信息）。
+[public_access]
+view = true
+logs = true
+download = true
+
+# 是否启用 Web UI。关闭后 `/ui/*` 与 `/` 仪表盘路由不再挂载。
+web_ui_enabled = true
+
+# 日志脱敏配置。
+[log_sanitization]
+# 是否在访问日志查询字符串中脱敏 token 参数（如 SRPM 下载签名 token）。
+redact_tokens = true
+# 是否脱敏 URL 中的用户认证信息（如 http://user:pass@host/）。
+redact_urls = false
+# 是否将日志中 repo baseurl 的路径脱敏为 basename。
+redact_paths = false
+
+# TLS 服务端证书配置。默认构建已启用 tls feature，配置后监听 HTTPS。
+# 不配置时保持 HTTP，由外部反向代理（如 nginx）终止 TLS。
+# [tls]
+# cert = "/etc/crbs/certs/server.crt"
+# key  = "/etc/crbs/certs/server.key"

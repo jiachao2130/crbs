@@ -1,0 +1,38 @@
+[Unit]
+Description=CRBS backup (SQLite online snapshot, optional artifacts archive)
+Documentation=https://github.com/cuap/crbs
+# 备份对运行中的库也是安全的（sqlite3 .backup 自带一致性快照），不依赖 server 存活；
+# 仅做排序声明：两者同时排队时先起 server。
+After=crbs-server.service
+
+[Service]
+Type=oneshot
+# 安装路径：脚本由 crbs-server 子包装到 /usr/libexec/crbs/backup-crbs.sh，
+# 与 crbs-normalize / crbs-priv-helper 的 libexec 约定一致。
+ExecStart=/usr/bin/env bash /usr/libexec/crbs/backup-crbs.sh
+# 需要连 artifacts 一起备份（体积大）时改用：
+# ExecStart=/usr/bin/env bash /usr/libexec/crbs/backup-crbs.sh --artifacts
+# 备份到独立磁盘时加 --backup-dir /backup/crbs，并把该路径加入下方 ReadWritePaths。
+
+# 以 crbs-server 运行以便读取 /var/lib/crbs/crbs.db（0660，crbs 组可读）。
+User=crbs-server
+Group=crbs
+SupplementaryGroups=crbs
+
+# 备份产物默认写 /var/lib/crbs/backups（脚本自建，2770）。
+# NOTE: 自定义 --backup-dir 后必须同步加入 ReadWritePaths，否则脚本写入会得到 EROFS。
+
+# Hardening. 备份是"读固定源 + 写单目录"的一次性任务，无 setuid helper、无容器，
+# 因此可以比 crbs-server.service 收得更紧（NoNewPrivileges / ProtectControlGroups /
+# RestrictNamespaces 在 server 单元里因 priv-helper/nspawn 刻意关闭，这里没有该约束）。
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/crbs
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictNamespaces=true
+
+# 本服务由 crbs-backup.timer 拉起，也可手动触发：systemctl start crbs-backup.service

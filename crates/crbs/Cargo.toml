@@ -1,0 +1,93 @@
+[package]
+name = "crbs"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+rust-version.workspace = true
+description = "Modern RPM batch build engine CLI"
+readme = "../../README.md"
+keywords = ["rpm", "build", "overlayfs", "container", "mock"]
+categories = ["command-line-utilities", "development-tools::build-utils"]
+
+[[bin]]
+name = "crbs"
+path = "src/main.rs"
+
+[dependencies]
+crbs-core = { path = "../crbs-core" }
+
+# CLI
+clap = { workspace = true, features = ["cargo"] }
+clap_complete = "4.5"
+
+# 异步运行时
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "fs", "process", "sync", "time", "signal", "io-util", "io-std"] }
+
+# 系统调用
+nix = { workspace = true }
+
+# 序列化
+serde = { workspace = true }
+serde_json = { workspace = true }
+# JSON 呈现层时间串规范化（RFC3339）
+chrono = { workspace = true }
+
+# 注释保留式用户配置写入（crbs remote add）
+toml_edit = { workspace = true }
+
+# 日志
+tracing = { workspace = true }
+
+# UUID（本地 detach 请求文件名）
+uuid = { workspace = true }
+
+# 工具
+tokio-util = { workspace = true }
+which = { workspace = true }
+glob = { workspace = true }
+home = "0.5"
+
+# HTTP client（用于 --remote 远程构建）
+reqwest = { workspace = true }
+urlencoding = { workspace = true }
+futures-util = "0.3"
+
+# 错误处理
+anyhow = { workspace = true }
+
+# 表格展示（builds show 子命令）
+comfy-table = { workspace = true }
+humansize = { workspace = true }
+
+# 临时文件（生产代码与测试共用）
+tempfile = { workspace = true }
+
+[dev-dependencies]
+# remote_profile 测试：断言 `remote add` 产物能被 crbs-core 的 toml 解析路径读取。
+toml = { workspace = true }
+# 单测直连 StateStore::pool 铺路与断言（生产构建不开该 feature，pool 保持
+# crate 私有）。
+crbs-core = { path = "../crbs-core", features = ["expose-pool"] }
+
+# hub API client 的 fetch_resolved_toml 需要 mock HTTP server
+# 覆盖 200/404/5xx 等错误分支。
+# 选型：wiremock 与 httpmock 均活跃维护；wiremock 的异步 Matcher API 与 axum/reqwest
+# 语义近，纯 HTTP 测试无 TLS 影响（reqwest 走 rustls，wiremock hyper 也走 http）。
+wiremock = "0.6"
+
+# CLI subprocess integration tests。
+# assert_cmd 提供 `Command::cargo_bin("crbs")` 与断言辅助；predicates 用于
+# stderr/stdout 内容匹配（含子串 / 正则）。仅测试参数解析、help 输出、
+# 以及 config-source 决策路径（macOS 上 setup_privileges 是 no-op，可以
+# 端到端跑到 `load_product_config`）。
+assert_cmd = "2"
+predicates = "3"
+# 测试用时钟暂停（#[tokio::test(start_paused)]：logs follow 的 25 次 poll
+# ≈5s 周期快进，仅测试构建；与 crbs-server 的 dev-dep 同款）。
+tokio = { workspace = true, features = ["test-util"] }
+
+[lints]
+workspace = true

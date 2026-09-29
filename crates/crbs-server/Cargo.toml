@@ -1,0 +1,113 @@
+[package]
+name = "crbs-server"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+rust-version.workspace = true
+description = "HTTP API server for CRBS RPM batch build engine"
+readme = "../../README.md"
+keywords = ["rpm", "build", "api", "server"]
+categories = ["network-programming", "development-tools::build-utils"]
+
+[[bin]]
+name = "crbs-server"
+path = "src/main.rs"
+
+[dependencies]
+crbs-core = { path = "../crbs-core" }
+
+# HTTP server
+axum = { workspace = true }
+tower-http = { workspace = true }
+tower = { workspace = true }
+
+# CLI
+clap = { workspace = true, features = ["env"] }
+clap_complete = "4.5"
+
+# 序列化
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# SSR 模板
+maud = { workspace = true }
+
+# URL 编码
+urlencoding = { workspace = true }
+
+# HTTP body / stream
+bytes = "1"
+
+# 出站 HTTP（批次准备期 SRPM 暂存下载；与 crbs-core / crbs-cli 同源 workspace 版本）
+reqwest = { workspace = true }
+
+# 日志
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+# 异步运行时
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "fs", "net", "signal", "sync", "time", "process"] }
+tokio-util = { workspace = true, features = ["io"] }
+
+# 时间 / uuid / 文件锁
+chrono = { workspace = true }
+uuid = { workspace = true }
+fs4 = { workspace = true }
+libc = "0.2"
+nix = { workspace = true, features = ["signal"] }
+
+# 流式响应
+tokio-stream = "0.1"
+
+# token 生成
+getrandom = { workspace = true }
+hex = { workspace = true }
+
+# 临时文件（测试与 multipart 上传共用）
+tempfile = { workspace = true }
+
+# 产物大小格式化
+humansize = { workspace = true }
+
+# diff 渲染（产品配置历史 revision 对比）
+similar = { workspace = true }
+
+# 批次规划期 hub 工具检查（dnf / rpm 可用性；与 crbs-core chain 同源）
+which = { workspace = true }
+
+# 错误处理
+anyhow = { workspace = true }
+
+# 哈希计算（产物 SHA256 校验 / CSRF token HMAC）
+sha2 = { workspace = true }
+hmac = "0.12"
+subtle = "2"
+
+# 数据库
+sqlx = { workspace = true }
+
+# 可选内置 HTTPS（tokio-rustls）
+tokio-rustls = { version = "0.26", optional = true, default-features = false, features = ["ring", "tls12"] }
+rustls = { version = "0.23", optional = true, default-features = false, features = ["ring", "tls12"] }
+rustls-pemfile = { version = "2", optional = true }
+hyper-util = { version = "0.1", optional = true, features = ["server-auto", "tokio", "service"] }
+
+[features]
+default = ["tls"]
+tls = ["dep:tokio-rustls", "dep:rustls", "dep:rustls-pemfile", "dep:hyper-util"]
+postgres = ["crbs-core/postgres", "sqlx/postgres"]
+
+[dev-dependencies]
+# 测试用时钟暂停（#[tokio::test(start_paused)]，监督循环退避快进，仅测试构建）
+tokio = { workspace = true, features = ["test-util"] }
+# 与 axum::Form 同源的 urlencoded 反序列化器（表单测试用）
+serde_urlencoded = "0.7"
+# 单测/集成测试直连 StateStore::pool 铺路与断言（生产构建不开该 feature，
+# pool 保持 crate 私有）。
+crbs-core = { path = "../crbs-core", features = ["expose-pool"] }
+
+[lints]
+workspace = true

@@ -1,0 +1,93 @@
+[package]
+name = "crbs-core"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+rust-version.workspace = true
+description = "Core library for CRBS RPM batch build engine"
+readme = "../../README.md"
+keywords = ["rpm", "build", "overlayfs", "container", "mock"]
+categories = ["development-tools::build-utils"]
+
+[dependencies]
+# 异步运行时
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "process", "fs", "sync", "time", "io-util"] }
+tokio-util = { workspace = true }  # CancellationToken
+
+# 序列化
+serde = { workspace = true }
+serde_json = { workspace = true }
+toml = { workspace = true }
+
+# 错误处理
+thiserror = { workspace = true }
+# chain 编排（engine/chain）沿用 anyhow context 链保留 CrbsError 变体
+# downcast 与 Display 文案（CLI 退出码映射依赖该语义），不落 thiserror 拍平。
+anyhow = { workspace = true }
+
+# 数据库
+# sqlite + any 为默认功能；postgres 为可选功能，需显式启用
+sqlx = { workspace = true }
+# 可选：静态编译 sqlite（bundled-sqlite feature）
+libsqlite3-sys = { version = "0.30", optional = true, features = ["bundled"] }
+
+# 哈希
+blake3 = "1.5"
+
+# HTTP 客户端（reproduce url 回退时按 url 下载环境包）
+reqwest = { workspace = true }
+
+# 日志
+tracing = { workspace = true }
+# logging 模块统一 tracing 初始化（server/CLI/worker main 薄调用）；
+# 测试亦复用（捕获 HelperBackend stderr 透传日志的测试订阅）
+tracing-subscriber = { workspace = true }
+
+# 系统调用
+nix = { workspace = true, features = ["mount", "fs", "process", "sched", "hostname"] }
+
+# 时间处理
+chrono = { workspace = true }
+
+# async trait
+async-trait = "0.1"
+
+# 文件锁（sync 用于 spawn_blocking 锁，tokio 用于 async 锁）
+fs4 = { workspace = true }
+
+# 工具
+uuid = { workspace = true, features = ["serde"] }
+tempfile = { workspace = true }
+hex = { workspace = true }
+which = { workspace = true }
+regex = "1.11"
+getrandom = { workspace = true }
+base64 = "0.22"
+sha2 = { workspace = true }
+# 密码哈希（auth/password.rs）：默认 features 含 password-hash + getrandom（OsRng 盐）
+argon2 = { workspace = true }
+home = "0.5"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+caps = "0.5"
+
+[dev-dependencies]
+tokio-test = "0.4"
+# latest 临时链接清扫测试：回拨 symlink 自身 mtime 模拟"崩溃残留"
+#（utimes 系跟随链接，必须用 set_symlink_file_times；crbs-worker dev-dep 同款先例）。
+filetime = "0.2"
+
+[features]
+default = []
+bundled-sqlite = ["dep:libsqlite3-sys"]
+# PostgreSQL 后端支持（启用后编译时包含 PG 驱动；运行时由 database.url 方案选择）
+postgres = ["sqlx/postgres"]
+# 跨 crate 测试通道：向下游测试构建暴露 StateStore::pool（铺路/断言直连池）。
+# 只允许出现在下游 [dev-dependencies]，生产构建（普通 [dependencies]）禁止启用。
+expose-pool = []
+
+[lints]
+workspace = true

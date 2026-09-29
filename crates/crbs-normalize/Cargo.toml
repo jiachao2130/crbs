@@ -1,0 +1,19 @@
+[package]
+name = "crbs-normalize"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+rust-version.workspace = true
+description = "Post-build content timestamp normalizer for CRBS buildroots"
+readme = "../../README.md"
+keywords = ["rpm", "reproducible-builds", "archive"]
+categories = ["development-tools::build-utils"]
+
+# 纯 std 零依赖：作为沙箱内单文件 helper 运行，体积与供应链面刻意最小。
+[dependencies]
+
+[lints]
+workspace = true

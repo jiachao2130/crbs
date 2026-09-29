@@ -1,0 +1,80 @@
+# 用于 roundtrip 测试：覆盖尽量多的字段（Option 有值、Vec 非空、HashMap 非空、嵌套 hooks）
+product = "full-fixture"
+base_packages = ["glibc", "bash", "coreutils", "rpm-build"]
+arches = ["x86_64", "aarch64"]
+releasever = "24.03"
+
+crbs_root = "/var/lib/crbs"
+result_dir = "/var/lib/crbs/results"
+shared_layers_dir = "/var/lib/crbs/layers"
+product_root = "/var/lib/crbs/full-fixture"
+base_os_path = "/var/lib/crbs/full-fixture/base"
+
+builder_user = "crbs"
+builder_uid = 1234
+builder_group = "crbs"
+builder_gid = 1234
+
+overlay_dir = "/data/overlay"
+shared_layer = ["kernel", "systemd"]
+shared_layer_staleness = "24h"
+backend = "nspawn"
+build_tmpfs = true
+network = false
+memory_max = "8G"
+cpu_quota = "200%"
+
+nocheck = false
+nodebuginfo = false
+build_target = "rpms"
+
+gpg_signing_key_id = "ABCD1234"
+gpg_home = "/var/lib/crbs/.gnupg"
+
+build_max_retries = 3
+build_retry_backoff_ms = 5000
+
+package_cache_max_size_gb = 50
+result_max_count_per_pkg = 10
+result_retention_days = 30
+
+[[repos]]
+name = "os"
+baseurl = "https://mirror.example.com/os/$basearch"
+enabled = true
+gpgcheck = true
+gpgkey = "file:///etc/pki/rpm-gpg/RPM-GPG-KEY-example"
+priority = 99
+cost = 1000
+
+[[repos]]
+name = "updates"
+baseurl = "https://mirror.example.com/updates/$basearch"
+enabled = true
+gpgcheck = true
+priority = 99
+cost = 1000
+
+[[post_init]]
+command = "dnf clean all"
+
+[[post_init]]
+command = "rm -rf /var/cache/dnf/*"
+
+[rpm_macros]
+_topdir = "/builddir/build"
+_binary_payload = "w9.gzdio"
+dist = ".el9"
+
+[hooks.pre]
+"install-srpm" = "echo pre-install-srpm"
+"build" = "echo pre-build"
+
+[hooks.post]
+"build" = "echo post-build"
+
+[hooks.spec.pre]
+"prep" = "echo pre-prep"
+
+[hooks.spec.post]
+"build" = "echo post-spec-build"

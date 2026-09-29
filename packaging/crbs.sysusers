@@ -1,0 +1,3 @@
+# crbs 组：由 base 包（crbs）的本片段创建，供 CLI/helper 与数据目录使用；
+# crbs-server / crbs-worker 用户由各子包自己的片段创建（crbs-server.conf / crbs-worker.conf）。
+g crbs - -

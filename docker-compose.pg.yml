@@ -1,0 +1,26 @@
+# PostgreSQL 开发/测试环境
+# 使用方式:
+#   docker-compose -f docker-compose.pg.yml up -d
+#   CRBS_TEST_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/crbs_test cargo test --features postgres
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: crbs_test
+    ports:
+      # 仅绑定 loopback：默认口令 postgres/postgres 的测试库不暴露到外部网卡。
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:

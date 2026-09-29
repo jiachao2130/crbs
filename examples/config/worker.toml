@@ -1,0 +1,94 @@
+# CRBS Worker 配置示例（风格对齐 examples/config/server.toml 逐键注释版）
+# 安装路径：/etc/crbs/worker.toml（RPM 部署；CRBS_CONFIG_DIR 环境变量可重定位配置目录）。
+# 结构定义：crates/crbs-worker/src/config.rs（serde 反序列化，缺省键走注释中标注的默认值）。
+
+# Worker 显示名称：hub 侧 workers 列表 / 派发日志中的标识；同一 hub 内建议唯一。
+name = "worker-01"
+
+# Hub 服务地址。生产环境必须 https://（token 会以 Bearer 头随请求发送，
+# 明文 HTTP 仅限 loopback 开发用途）；端口为 server.toml listen 配置的端口。
+hub_url = "https://hub.example.com:18443"
+
+# 本机架构（如 "x86_64" / "aarch64"）。缺省时由运行时探测（uname）；
+# hub 侧按 arch 匹配派发架构构建，显式声明可避免容器内探测失真。
+arch = "x86_64"
+
+# 最大并发构建数。合法范围 1..=1024（与 server 注册端点同口径，越界加载
+# 直接报错不静默钳制）；默认 1。建议不超过 (CPU 核数 - 1) 与磁盘/内存余量。
+capacity = 2
+
+# Worker 注册 token：由 hub 侧管理员创建（crbs-server worker add）下发；
+# 等价于长期凭据，文件权限应收紧（如 0640 root:crbs）。
+token = "your-worker-token-here"
+
+# 可选的 Hub CA 证书路径（自签/内网 CA 场景）；未配置时使用系统默认信任库。
+# hub_ca_cert = "/etc/crbs/certs/ca.crt"
+
+# 心跳间隔（秒），默认 30。携带本机负载遥测（load1/CPU/内存）；小于 5 时
+# 加载直接报错（fail-fast，防高频心跳放大 hub 压力）。hub 侧超 120s 未收到
+# 心跳即标记 offline。
+heartbeat_interval_secs = 30
+
+# 任务长轮询超时（秒），默认 60；小于 1 时加载直接报错（会退化为忙轮询）。
+# 单文件产物上限 2GB、慢链路上传可能远超 30s，勿凭直觉调小。
+# poll 请求按该值显式携带 ?wait=（留 5s 余量、上限 115，服务端 clamp 120），
+# 服务端长轮询窗口与本值对齐——本值同时仍是客户端整体请求超时。
+poll_timeout_secs = 60
+
+# 构建工作目录（绝对路径）。默认 /var/lib/crbs/worker/builds；每次构建在
+# 其下按 build_id 隔离子目录，磁盘需预留并发数 × 单构建峰值（含 chroot 层）。
+build_dir = "/var/lib/crbs/worker/builds"
+
+# 本地构建结果目录保留天数（mtime 超期即清，0 = 永久保留；默认 3）。
+# hub 侧另有独立的结果 GC（server 配置 result_gc_grace_hours），此处只管
+# worker 本地副本。
+result_retention_days = 3
+
+# 引擎世界 root（状态库与共享层目录的父目录），默认 /var/lib/crbs。
+# worker 构造引擎配置时会把它显式 pin 进引擎 config——与 server root 分离
+# 部署（server 用独立 root）时可各自指定。
+crbs_root = "/var/lib/crbs"
+
+# 构建临时目录（engine 配置 tmp_dir），默认 /var/tmp：启动期孤儿挂载 GC 的
+# 扩展扫描域之一（overlay 挂载目标在 {tmp_dir}/.tmpXXXX/root）。引擎默认
+# tmp_dir 为 {crbs_root}/tmp，已被启动 GC 的 crbs_root 子树扫描覆盖；本键
+# 主要为自定义引擎 tmp_dir 的部署镜像配置。**须与 crbs.toml 引擎配置 tmp_dir
+# 保持一致**，否则启动 GC 不覆盖该目录（未覆盖的孤儿
+# 由每构建 init 清理与 `crbs gc --orphan-mounts` 兜底）。周期 sweeper 还会
+# 在挂载回收后按布局签名 + 1h 宽限 + 挂载复扫清收本域下 `.tmpXXXX` 崩溃
+# 残留目录体（仅 Linux）。
+tmp_dir = "/var/tmp"
+
+# tmpfs 构建目录（engine 配置 tmpfs_dir），默认 /dev/shm：语义同 tmp_dir，
+# 全内存构建（build_tmpfs）的扫描域；/dev/shm 残留占内存，启动 GC 覆盖它
+# 可在空闲 worker 重启后及时回收。周期 sweeper 对该域的 `.tmpXXXX` 残留
+# 目录体清扫与 tmp_dir 同口径。
+tmpfs_dir = "/dev/shm"
+
+# 启动期孤儿挂载 GC 模式：auto | always | never，默认 auto。worker 启动先注册
+# hub，注册响应的 has_active_local_builds 守卫（hub DB 有无活跃构建）决定
+# 是否执行启动 GC——同机部署（hub 本地构建/另一 worker 共享 crbs_root）时
+# 防止无条件卸载活跃挂载。always = 无条件执行（worker 独占整机时可开阀找回
+# 旧行为）；never = 从不执行（孤儿挂载用带守卫的 `crbs gc --orphan-mounts`）。
+# 非法值加载直接报错。
+startup_mount_gc = "auto"
+
+# 构建超时兜底（秒），默认 86400（24h）；0 = 关闭兜底（构建不限时）。
+# 仅当构建请求未显式指定 --timeout 时生效：hang 住的构建会永久占用 hub
+# running 行与本 worker 并发额度（心跳活着，reclaimer 永不回收），兜底
+# 保证其最终以 timeout 终态释放。显式 --timeout 优先（含 --timeout 0 =
+# 显式无限）；内核级大包构建可按需调大。
+build_timeout_secs = 86400
+
+# 领任务前的磁盘水位门（GB），默认 1；0 = 关闭。build_dir 所在盘剩余空间
+# 低于该值时本轮跳过领任务（防止满盘 worker 形成"领取→失败→再领"的失败
+# 泵），心跳照常发送、在跑构建不受影响；盘空间恢复后自动重新领任务。
+# 与 server 侧 min_free_disk_gb（hub 入口闸门）同名同语义，两端按部署
+# 磁盘情况各自配置。
+min_free_disk_gb = 1
+
+# 领任务前的内存水位门（MB，按 MemAvailable 计），默认 512；0 = 关闭。剩余
+# 可用内存低于该值时本轮跳过领任务（防内存耗尽的 worker 把 OOM 扩大到同机
+# 其他构建），心跳照常发送、在跑构建不受影响；读取 /proc/meminfo 失败
+# （含非 Linux）放行（fail-open，同磁盘门姿态）。
+min_free_mem_mb = 512

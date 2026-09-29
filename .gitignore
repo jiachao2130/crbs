@@ -1,0 +1,31 @@
+# Build
+/target
+/rpmbuild
+/dist-*/
+/results
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Cargo.lock: 二进制项目应提交 lock 文件，确保可复现构建
+# 如需忽略，取消下一行注释
+# /Cargo.lock
+
+# Environment
+.env
+.env.*
+
+__pycache__/
+*.pyc
+
+# 本地 hermetic 测试物料（离线 vendor 包），不入库
+/vendor/
+/vendor.tar.gz

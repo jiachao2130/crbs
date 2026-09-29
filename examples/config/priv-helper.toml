@@ -1,0 +1,17 @@
+# crbs-priv-helper 私有配置（RPM 默认安装，升级以 %config(noreplace) 保留本地修改）。
+#
+# 本文件自身必须 root 所有且不可被 group/other 写（如 0640 root:crbs）；
+# 该自举检查不可被本文件内容放宽——放宽决定权始终在 root 手里。
+
+# relax_config_permissions：放宽对 /etc/crbs 下其它配置文件（crbs.toml、
+# products/*.toml）的属主/可写性检查。默认 false（严格模式，推荐）；仅限
+# 配置必须由非 root 用户维护的单租户/开发机临时开启，多租户/生产环境保持 false。
+#
+# relax_config_permissions = false
+
+# allowed_paths：追加到 helper 允许集合的显式路径（`crbs.toml`/产品配置声明
+# 之外的目录）。用于外部软件仓库等无法从 crbs/product 配置推导的位置。
+# helper 默认只允许操作 crbs.toml 与各产品配置中声明的路径（crbs_root、
+# result_dir、shared_layers_dir、base_os_path、各类缓存目录等），一般无需在此追加。
+#
+# allowed_paths = ["/srv/custom-repo"]

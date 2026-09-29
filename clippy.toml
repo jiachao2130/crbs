@@ -1,0 +1,6 @@
+# unwrap_used / expect_used 的测试豁免（配合根 Cargo.toml 的 deny）：
+# 覆盖 #[test]/#[tokio::test] 函数体与 #[cfg(test)] 模块。
+# tests/ 集成测试 crate 不带 --cfg test 编译，其中不带 #[test] 属性的
+# 辅助函数（seed_* 等）豁免不到——那些文件按文件头 #![allow] 放行。
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true

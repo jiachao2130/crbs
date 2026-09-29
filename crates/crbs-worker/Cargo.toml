@@ -1,0 +1,68 @@
+[package]
+name = "crbs-worker"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+rust-version.workspace = true
+description = "CRBS distributed build worker"
+readme = "../../README.md"
+keywords = ["rpm", "build", "worker", "distributed"]
+categories = ["development-tools::build-utils"]
+
+[[bin]]
+name = "crbs-worker"
+path = "src/main.rs"
+
+[dependencies]
+crbs-core = { path = "../crbs-core" }
+
+# CLI
+clap = { workspace = true, features = ["cargo"] }
+clap_complete = "4.5"
+
+# 异步运行时
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "fs", "process", "sync", "time", "signal", "io-util"] }
+
+# 序列化
+serde = { workspace = true }
+serde_json = { workspace = true }
+toml = { workspace = true }
+
+# 日志
+tracing = { workspace = true }
+
+# HTTP client（与 Hub 通信）
+reqwest = { workspace = true }
+
+# 引用计数字节缓冲（日志批上传零拷贝重试，见 executor/log_stream.rs）
+bytes = "1"
+
+# 工具
+tokio-util = { workspace = true, features = ["io"] }
+# O_NOFOLLOW（结果目录内上传文件拒跟随预植 symlink）
+nix = { workspace = true }
+
+# 哈希计算（产物 SHA256 校验）
+sha2 = { workspace = true }
+
+# 临时文件
+tempfile = { workspace = true }
+
+# 磁盘剩余空间查询（poll 侧水位门，与 hub 侧 fs4::available_space 同款）
+fs4 = { workspace = true }
+
+[dev-dependencies]
+# 下载目录清扫 mtime 宽限测试：回拨目录 mtime 模拟"超过宽限"。
+filetime = "0.2"
+# 单测直连 StateStore::pool 铺路与断言（生产构建不开该 feature，pool 保持
+# crate 私有）。
+crbs-core = { path = "../crbs-core", features = ["expose-pool"] }
+# 本地库行 prune 测试：直插/回拨 builds.completed_at 模拟"超期"
+# （store 层无 backdate API；crbs-server 集成测试同款 dev-dep 形态）。
+sqlx = { workspace = true }
+
+[lints]
+workspace = true

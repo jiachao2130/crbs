@@ -1,0 +1,1220 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "crbs configuration schemas",
+  "description": "JSON Schemas for the crbs configuration files. This document is a library of definitions; validate instances against one of the four roots: /etc/crbs/crbs.toml -> #/$defs/CrbsConfig (engine world: paths, build user, ccache, tmpfs, remote server profiles), /etc/crbs/products/*.toml -> #/$defs/ProductConfig (per-product overrides: base_packages, repos, chain '+field' append syntax), /etc/crbs/server.toml -> #/$defs/ServerConfig (crbs-server world: listen address, auth, rate limits, Web UI), /etc/crbs/worker.toml -> #/$defs/WorkerConfig (crbs-worker world: hub URL, token, capacity, polling and timeouts). All keys are optional unless listed under 'required'; an omitted key falls back to the documented default (Rust Option fields behave the same way). Unknown keys are rejected by the parser (deny_unknown_fields), mirroring 'additionalProperties': false.",
+  "$defs": {
+    "CrbsConfig": {
+      "type": "object",
+      "description": "Global engine configuration (/etc/crbs/crbs.toml). Shared by all products; product TOMLs may override individual fields.",
+      "additionalProperties": false,
+      "properties": {
+        "crbs_root": {
+          "type": "string",
+          "description": "Engine-world data root. Default: /var/lib/crbs-engine. Server world uses server.toml's crbs_root instead (root separation)."
+        },
+        "result_dir": {
+          "type": "string",
+          "description": "Build results directory. When unset, derived as {crbs_root}/results."
+        },
+        "shared_layers_dir": {
+          "type": "string",
+          "description": "Shared layer storage directory. When unset, derived as {crbs_root}/shared_layers."
+        },
+        "database_url": {
+          "type": "string",
+          "description": "State database URL: sqlite:///path/to/crbs.db (default {crbs_root}/crbs.db) or postgres://user:pass@host/dbname."
+        },
+        "product_root": {
+          "type": "string",
+          "description": "Products root directory override. When unset, derived as {crbs_root}/{product}."
+        },
+        "base_os_path": {
+          "type": "string",
+          "description": "Base OS layer path override. When unset, defaults to {product_root}/base."
+        },
+        "dnf_cache_path": {
+          "type": "string",
+          "description": "dnf cache directory override. When unset, derived as {product_root}/dnf-cache."
+        },
+        "builder_user": {
+          "type": "string",
+          "description": "Build user name. Default: ccbuilder."
+        },
+        "builder_uid": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Build user UID. Default: 10010."
+        },
+        "builder_group": {
+          "type": "string",
+          "description": "Build user group. Default: ccbuilder."
+        },
+        "builder_gid": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Build user GID. Default: 10010."
+        },
+        "shared_layer_gc_grace_hours": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Hours an unused shared layer is kept before GC. Default: 168."
+        },
+        "result_gc_grace_hours": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Hours a result directory is kept before GC. Default: 720."
+        },
+        "shared_layer": {
+          "$ref": "#/$defs/BoolOrPackages",
+          "description": "Shared layer toggle: global bool or list of package names to share. Default: false."
+        },
+        "build_tmpfs": {
+          "type": "boolean",
+          "description": "Mount a tmpfs for the build directory. Default: false."
+        },
+        "tmpfs_dir": {
+          "type": "string",
+          "description": "tmpfs mount source directory. Default: /dev/shm."
+        },
+        "tmp_dir": {
+          "type": "string",
+          "description": "Temporary directory for builds. Unset = derived from crbs_root as {crbs_root}/tmp."
+        },
+        "max_concurrent_builds": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Local `crbs build` concurrency cap; 0 means num_cpus. crbs-server concurrency is governed by server.toml's max_local_builds. Default: 0."
+        },
+        "shared_layer_poll_interval_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Shared layer readiness poll interval in milliseconds. Default: 100."
+        },
+        "shared_layer_timeout_secs": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Shared layer readiness timeout in seconds. Default: 60."
+        },
+        "shared_layer_max_retries": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Max retries while waiting for a shared layer. Default: 2."
+        },
+        "shared_layer_staleness": {
+          "type": "string",
+          "description": "Shared layer staleness threshold (human duration, e.g. \"7d\"). Default: 7d."
+        },
+        "chain_parallelism": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Parallelism for chain builds (must be >= 1: 0 would deadlock the depsolve semaphore). Default: 8."
+        },
+        "chain_max_recovery_rounds": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Recovery rounds after the topological pass for transiently failed chain packages; 0 disables recovery. Default: 1."
+        },
+        "resource_sample_interval_secs": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Build resource sampling interval in seconds for the /proc backend (0 disables proc-side sampling; host-side read-only, sampling failures never affect the build). Default: 15."
+        },
+        "resource_sample_interval_cgroup_secs": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Build resource sampling interval in seconds for the cgroup backend (sampling tiering; unset uses the 5-second engine constant, 0 disables cgroup-side sampling). Independent of resource_sample_interval_secs."
+        },
+        "build_max_retries": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Automatic retries for transient build failures. Default: 1."
+        },
+        "build_retry_backoff_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Backoff between build retries in milliseconds. Default: 1000."
+        },
+        "package_cache_max_size_gb": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "GC disk quota: max package cache size in GB. Unset = unlimited."
+        },
+        "package_cache_evict_referenced": {
+          "type": "boolean",
+          "description": "GC policy: allow evicting package cache entries still referenced by kept results. Default: false."
+        },
+        "result_max_count_per_pkg": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "GC policy: max kept results per package. Unset = unlimited."
+        },
+        "result_retention_days": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "GC policy: delete results older than this many days. Unset = unlimited."
+        },
+        "package_url_cache_ttl_days": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "TTL in days for cached package URL provenance; 0 disables cleanup. Default: 90."
+        },
+        "base_snapshot_keep_generations": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Base snapshot generations to keep per product (init materializes its install transaction into {crbs_root}/base-snapshots/{product}); 0 disables pruning. Default: 8."
+        },
+        "reproduce_enabled": {
+          "$ref": "#/$defs/BoolOrPackages",
+          "description": "Record provenance (URL, SHA256, build_packages.json) for reproduction: global bool or per-package list. Default: false."
+        },
+        "rpm_macros": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Extra RPM macros passed to rpmbuild (macro name -> value)."
+        },
+        "ccache_enabled": {
+          "$ref": "#/$defs/BoolOrPackages",
+          "description": "ccache toggle: global bool or list of package names. Default: false."
+        },
+        "ccache_dir": {
+          "type": "string",
+          "description": "ccache directory. Global value is not merged from this file today; the effective default is {crbs_root}/ccache/{product}."
+        },
+        "ccache_max_size": {
+          "type": "string",
+          "description": "ccache size limit. Format: <number><unit> where unit is K/k/M/G/T (optional i/B suffix; lowercase g/m/t are rejected by ccache itself); bare numbers and 0 are rejected. Default: 4G."
+        },
+        "dnf_cache_enabled": {
+          "type": "boolean",
+          "description": "Enable persistent dnf cache across builds. Default: false. A product with deterministic=true requires the merged effective value to be true (set it here or in the product TOML)."
+        },
+        "releasever": {
+          "type": "string",
+          "description": "dnf --releasever value. When unset, inferred from the host /etc/os-release."
+        },
+        "package_cache_path": {
+          "type": "string",
+          "description": "Package cache directory for build idempotency. Unset = disabled."
+        },
+        "build_target": {
+          "type": "string",
+          "description": "rpmbuild target stage: ba (all) or bb (build only). Default: bb."
+        },
+        "nocheck": {
+          "type": "boolean",
+          "description": "Skip the %check stage (global default, product may override). Default: false."
+        },
+        "noclean": {
+          "type": "boolean",
+          "description": "Skip the distro cleanup stages (%clean and rmbuild; BUILD-tree reclamation stays with the engine teardown; global default, product may override). Default: false."
+        },
+        "nodebuginfo": {
+          "type": "boolean",
+          "description": "Do not generate debuginfo packages (global default, product may override). Default: false."
+        },
+        "gpg_signing_key_id": {
+          "type": "string",
+          "description": "GPG key ID for package signing. Unset = no signing."
+        },
+        "gpg_home": {
+          "type": "string",
+          "description": "GPG home directory for signing. Unset = gpg default."
+        },
+        "gpg_signing_enabled": {
+          "type": "boolean",
+          "description": "Explicit signing switch. false disables signing even when gpg_signing_key_id is set (fork defaults to false). Unset = enabled when a key is configured."
+        },
+        "backend": {
+          "type": "string",
+          "description": "Container backend: nspawn (default) or chroot. chroot with auth enabled is discouraged (no namespace isolation)."
+        },
+        "memory_max": {
+          "type": "string",
+          "description": "Memory limit for nspawn builds (systemd-run syntax, e.g. \"4G\")."
+        },
+        "cpu_quota": {
+          "type": "string",
+          "description": "CPU quota for nspawn builds (e.g. \"200%\")."
+        },
+        "network": {
+          "type": "boolean",
+          "description": "true = builds share the host network namespace, false = isolated. Default: true."
+        },
+        "hooks": {
+          "$ref": "#/$defs/HooksConfig",
+          "description": "Build script hook points (global default, product may override)."
+        },
+        "remote": {
+          "$ref": "#/$defs/RemoteConfig",
+          "description": "Client-side remote crbs-server profiles. Only read by the crbs CLI; the server ignores this section."
+        },
+        "use_privileged_helper": {
+          "$ref": "#/$defs/PrivilegedHelperMode",
+          "description": "Privilege helper usage policy. Default: auto."
+        },
+        "privileged_helper_path": {
+          "type": "string",
+          "description": "Path to the privilege helper binary. Unset = built-in lookup."
+        }
+      }
+    },
+    "RemoteConfig": {
+      "type": "object",
+      "description": "Client-side remote crbs-server profiles (crbs.toml [remote]).",
+      "additionalProperties": false,
+      "properties": {
+        "default": {
+          "type": "string",
+          "description": "Default remote profile name. None, empty or \"local\" means local builds; any other value must match a profile in `profiles`."
+        },
+        "profiles": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RemoteProfile"
+          },
+          "description": "Named remote server profiles."
+        }
+      }
+    },
+    "RemoteProfile": {
+      "type": "object",
+      "description": "A single remote crbs-server profile (crbs.toml [[remote.profiles]]).",
+      "additionalProperties": false,
+      "required": ["name", "url"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Profile name referenced by --remote / remote.default."
+        },
+        "url": {
+          "type": "string",
+          "description": "Base URL of the crbs-server, e.g. http://hub.example.com:9090."
+        },
+        "token": {
+          "type": "string",
+          "description": "API token written directly into the config file (not recommended; prefer token_env or token_file). Debug output is always redacted."
+        },
+        "token_env": {
+          "type": "string",
+          "description": "Name of the environment variable holding the API token."
+        },
+        "token_file": {
+          "type": "string",
+          "description": "Path to the file holding the API token; a leading ~ is expanded."
+        },
+        "ca_cert": {
+          "type": "string",
+          "description": "PEM CA certificate for hub TLS (self-signed / internal CA)."
+        }
+      }
+    },
+    "HooksConfig": {
+      "type": "object",
+      "description": "Build script hook points (crbs.toml / product.toml [hooks]). Keys are step names, values are bash snippets.",
+      "additionalProperties": false,
+      "properties": {
+        "pre": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Hooks executed before the build step (step name -> bash snippet)."
+        },
+        "post": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Hooks executed after the build step (step name -> bash snippet)."
+        },
+        "spec": {
+          "$ref": "#/$defs/SpecHooksConfig",
+          "description": "Hooks around the spec phase ([hooks.spec.pre] / [hooks.spec.post])."
+        }
+      }
+    },
+    "SpecHooksConfig": {
+      "type": "object",
+      "description": "Spec-phase hooks ([hooks.spec]).",
+      "additionalProperties": false,
+      "properties": {
+        "pre": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Hooks executed before the spec phase (step name -> bash snippet)."
+        },
+        "post": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Hooks executed after the spec phase (step name -> bash snippet)."
+        }
+      }
+    },
+    "BoolOrPackages": {
+      "description": "Either a global boolean switch or a list of package (SRPM base) names the switch applies to, e.g. `false` or [\"kernel\"].",
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "PrivilegedHelperMode": {
+      "type": "string",
+      "description": "Privilege helper usage policy: auto (use helper when present, fall back to setuid), always (require helper), never (force setuid).",
+      "enum": ["auto", "always", "never"]
+    },
+    "ProductConfig": {
+      "type": "object",
+      "description": "Product configuration (/etc/crbs/products/{product}.toml): product-specific overrides layered on top of crbs.toml. Omitted keys fall back to the inherited global value. Two legal shapes (anyOf below): a root product file must declare both base_packages and repos; a child product in a product chain may instead declare only the '+field' append keys (at least one of '+base_packages' / '+repos'). A file matching neither shape (fully empty) is rejected here, and every fully resolved config must still end up with both non-empty (chain exit validation). Unknown keys are rejected by the parser (deny_unknown_fields), mirroring 'additionalProperties': false.",
+      "additionalProperties": false,
+      "anyOf": [
+        {
+          "required": ["base_packages", "repos"]
+        },
+        {
+          "required": ["+base_packages"]
+        },
+        {
+          "required": ["+repos"]
+        }
+      ],
+      "properties": {
+        "product": {
+          "type": "string",
+          "description": "Product identifier kept for human readers; the effective name is the file name / load(product) argument."
+        },
+        "base_packages": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Packages installed into the base OS via dnf --installroot at init. Required (together with repos) in a root product file; child products may instead use '+base_packages' to append to the parent list. Core runtime packages (bash, coreutils, shadow-utils, sudo) are added automatically; ccache is appended when enabled."
+        },
+        "repos": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RepoConfig"
+          },
+          "description": "Repositories written to the base OS /etc/yum.repos.d/ at init (dnf-installed packages are rewritten afterwards, so this set is the effective one). Required (together with base_packages) in a root product file; child products may instead use '+repos' to append — duplicate repo names across the resolved chain are rejected."
+        },
+        "+base_packages": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Append syntax: packages appended to the parent's base_packages after the chain merge (user input / DB storage only; folded away in the resolved config sent to workers)."
+        },
+        "+repos": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RepoConfig"
+          },
+          "description": "Append syntax: repos appended to the parent's repos after the chain merge; name collisions with inherited repos are rejected at resolution time."
+        },
+        "+arches": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Append syntax: architectures appended to the parent's arches after the chain merge."
+        },
+        "+post_init": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PostInitCommand"
+          },
+          "description": "Append syntax: post-init commands appended to the parent's post_init after the chain merge."
+        },
+        "arches": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Supported architectures. Unset = single-arch mode (build for the arch given at submission); set = multi-arch builds default to this list. An empty list is indistinguishable from unset and inherits the parent list."
+        },
+        "noarch_preferred_arches": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Host preference arch set for noarch builds (unordered set). A collapsed noarch build row materializes this as its claimable arch set: only workers of these arches may claim it. Unset or empty = no restriction. Tokens must pass the arch charset whitelist; the constraint is frozen onto the build row at submission time."
+        },
+        "+noarch_preferred_arches": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Append syntax: arches appended to the parent's noarch_preferred_arches after the chain merge."
+        },
+        "releasever": {
+          "type": "string",
+          "description": "dnf --releasever value. When unset, inferred from the host /etc/os-release."
+        },
+        "overlay_dir": {
+          "type": "string",
+          "description": "Overlay directory copied recursively into the base OS at init (permissions preserved), e.g. for custom configs, certificates or yum plugins. For security the path must live under /etc/crbs/overlays/."
+        },
+        "post_init": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PostInitCommand"
+          },
+          "description": "Commands executed inside the chroot after base OS init. Unlike plain list fields, an explicit empty list replaces the inherited list with 'no commands'."
+        },
+        "builder_user": {
+          "type": "string",
+          "description": "Build user name override, for products that need isolation from other products. Unset = inherit the global value (default: ccbuilder)."
+        },
+        "builder_uid": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Build user UID override. Unset = inherit the global value."
+        },
+        "builder_group": {
+          "type": "string",
+          "description": "Build user group override. Unset = inherit the global value."
+        },
+        "builder_gid": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Build user GID override. Unset = inherit the global value."
+        },
+        "crbs_root": {
+          "type": "string",
+          "description": "Machine-level engine root. Accepted here for compatibility but ignored: the engine world decides it in crbs.toml, and chain resolution strips product-level values (with a warning)."
+        },
+        "result_dir": {
+          "type": "string",
+          "description": "Build results directory override for this product (e.g. a dedicated large disk). Unset = derived from the global config. Machine-local paths are passed through to workers as-is."
+        },
+        "shared_layers_dir": {
+          "type": "string",
+          "description": "Shared layer storage directory override. Unset = derived from the global config."
+        },
+        "product_root": {
+          "type": "string",
+          "description": "Products root directory override. Unset = derived from the global config."
+        },
+        "base_os_path": {
+          "type": "string",
+          "description": "Base OS layer path override. Unset = {product_root}/base."
+        },
+        "dnf_cache_path": {
+          "type": "string",
+          "description": "dnf cache directory override. Unset = derived from the global config."
+        },
+        "shared_layer_gc_grace_hours": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Hours an unused shared layer is kept before GC (override). Unset = inherit the global value (global default: 168)."
+        },
+        "result_gc_grace_hours": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Hours a result directory is kept before GC (override). Unset = inherit the global value (global default: 720)."
+        },
+        "shared_layer": {
+          "$ref": "#/$defs/BoolOrPackages",
+          "description": "Shared layer toggle override. Chain merge: any explicit value (including an empty package list = explicitly disable the parent's enabled set) overrides the parent; omitting inherits."
+        },
+        "shared_layer_staleness": {
+          "type": "string",
+          "description": "Shared layer staleness threshold override (human duration, e.g. \"7d\"). Default: 7d."
+        },
+        "build_tmpfs": {
+          "type": "boolean",
+          "description": "Mount a tmpfs for the build directory (override). Unset = inherit the global value."
+        },
+        "tmpfs_dir": {
+          "type": "string",
+          "description": "tmpfs mount source directory override. Unset = inherit the global value (default: /dev/shm)."
+        },
+        "tmp_dir": {
+          "type": "string",
+          "description": "Temporary directory for builds override. Unset = inherit the global value (global default: {crbs_root}/tmp)."
+        },
+        "gpg_signing_key_id": {
+          "type": "string",
+          "description": "GPG key ID for package signing override, for products signing with their own key. Unset = inherit the global value; no global value = no signing."
+        },
+        "gpg_home": {
+          "type": "string",
+          "description": "GPG home directory override. Unset = gpg default."
+        },
+        "gpg_signing_enabled": {
+          "type": "boolean",
+          "description": "Explicit signing switch. false disables signing even when gpg_signing_key_id is set (fork defaults to false). Unset = enabled when a key is configured."
+        },
+        "rpm_macros": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Extra RPM macros merged with the global ones (product entries win on conflict)."
+        },
+        "ccache_enabled": {
+          "$ref": "#/$defs/BoolOrPackages",
+          "description": "ccache toggle override. Chain merge: any explicit value (including an empty package list = explicitly disable the parent's enabled set) overrides the parent; omitting inherits."
+        },
+        "ccache_dir": {
+          "type": "string",
+          "description": "ccache directory for this product. When set, used verbatim (no product subdirectory is appended); when unset, the effective default is {crbs_root}/ccache/{product}."
+        },
+        "ccache_max_size": {
+          "type": "string",
+          "description": "ccache size limit override. Format: <number><unit> where unit is K/k/M/G/T (optional i/B suffix); bare numbers and 0 are rejected. Unset = inherit the global value (global default: 4G)."
+        },
+        "dnf_cache_enabled": {
+          "type": "boolean",
+          "description": "Enable persistent dnf cache across builds (override). Unset = inherit the global value. A deterministic product requires the merged effective value to be true (set it here or in crbs.toml)."
+        },
+        "builddep_install_weak_deps": {
+          "type": "boolean",
+          "description": "Whether 'dnf builddep' installs weak deps (Recommends). Only affects the builddep install path, not base OS init. Unset = dnf default (weak deps installed); false appends --setopt=install_weak_deps=False to keep file-capability stragglers out of the sandbox."
+        },
+        "build_target": {
+          "type": "string",
+          "description": "rpmbuild target stage override: bb (binary only, default), bs (source only), ba (binary + source; rejected for deterministic products). Unset = inherit the global value."
+        },
+        "nocheck": {
+          "type": "boolean",
+          "description": "Skip the %check stage (override). Unset = inherit the global value."
+        },
+        "noclean": {
+          "type": "boolean",
+          "description": "Skip the distro cleanup stages (%clean and rmbuild; override). Unset = inherit the global value."
+        },
+        "nodebuginfo": {
+          "type": "boolean",
+          "description": "Do not generate debuginfo packages (override). Unset = inherit the global value."
+        },
+        "backend": {
+          "type": "string",
+          "description": "Container backend override: nspawn (global default) or chroot. When unset, inherited from the global config."
+        },
+        "memory_max": {
+          "type": "string",
+          "description": "Memory limit for nspawn builds (systemd MemoryMax syntax: digits with optional K/M/G/T suffix, e.g. \"4G\"; 16 TiB cap). Ignored under the chroot backend."
+        },
+        "cpu_quota": {
+          "type": "string",
+          "description": "CPU quota for nspawn builds (e.g. \"200%\" = 2 cores). Ignored under the chroot backend."
+        },
+        "network": {
+          "type": "boolean",
+          "description": "true = builds share the host network namespace, false = isolated (override). Unset = inherit the global value (global default: true)."
+        },
+        "repo-publish": {
+          "type": "boolean",
+          "description": "Publish axis: whether successful builds are published into the product repo. Unset = publish (true); false keeps the product from publishing long-term. Per-build --no-publish tightens independently; the publish and consume axes are orthogonal."
+        },
+        "repo-consume": {
+          "type": "boolean",
+          "description": "Consume axis: whether later builds consume this product's repo via builddep (crbs-product.repo injection). Unset = consume (true). Orthogonal to repo-publish; effective value is snapshotted per build at submit time (private products veto, --no-consume tightens)."
+        },
+        "local_repo": {
+          "type": "string",
+          "description": "Local repository path for chain builds."
+        },
+        "chain_parallelism": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Parallelism for chain builds (override; must be >= 1: 0 would deadlock the depsolve semaphore). Unset = inherit the global value (global default: 8)."
+        },
+        "chain_max_recovery_rounds": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Recovery rounds after the topological pass for transiently failed chain packages; 0 disables recovery (override). Unset = inherit the global value (global default: 1)."
+        },
+        "resource_sample_interval_secs": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Build resource sampling interval in seconds for the /proc backend (override). Unset = inherit the global value (global default: 15)."
+        },
+        "resource_sample_interval_cgroup_secs": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Build resource sampling interval in seconds for the cgroup backend (override; unset uses the 5-second engine constant, 0 disables cgroup-side sampling). Unset = inherit the global value."
+        },
+        "resource_overrides": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/ResourceOverride"
+          },
+          "description": "Static per-package resource profiles keyed by package name (hub-side scheduler admission fallback when a package has no build history). Hub-only: stripped from the chain-resolved TOML dispatched to workers, so old workers keep parsing the wire format unchanged."
+        },
+        "build_max_retries": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Automatic retries for transient build failures (override). Unset = inherit the global value (global default: 1)."
+        },
+        "build_retry_backoff_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Backoff between build retries in milliseconds (override). Unset = inherit the global value (global default: 1000)."
+        },
+        "package_cache_max_size_gb": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "GC disk quota: max package cache size in GB (override). Unset = inherit the global value; unset everywhere = unlimited."
+        },
+        "package_cache_evict_referenced": {
+          "type": "boolean",
+          "description": "GC policy: allow evicting package cache entries still referenced by kept results (override). Unset = inherit the global value (global default: false)."
+        },
+        "result_max_count_per_pkg": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "GC policy: max kept results per package (override). Unset = inherit the global value; unset everywhere = unlimited."
+        },
+        "result_retention_days": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "GC policy: delete results older than this many days (override). Unset = inherit the global value; unset everywhere = unlimited."
+        },
+        "recipe_retention_days": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Recipe GC pinning window in days: within this window after recipe.json is generated, its referenced sha256 entries are immune to package cache GC eviction (replay warm-up optimization, not a correctness requirement — misses recover via recorded URLs). Unset = 90; 0 disables pinning. Values above server.toml's db_retention_days are silently truncated to the smaller one (task rows are pruned first)."
+        },
+        "package_url_cache_ttl_days": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "TTL in days for cached package URL provenance; 0 disables cleanup (override). Unset = inherit the global value (global default: 90)."
+        },
+        "reproduce_enabled": {
+          "$ref": "#/$defs/BoolOrPackages",
+          "description": "Record provenance (URL, SHA256, build_packages.json) for reproduction: global bool or per-package list (override). Chain merge: any explicit value (including an empty package list = explicitly disable) overrides the parent; omitting inherits. Deterministic products record provenance regardless."
+        },
+        "noarch_per_arch": {
+          "type": "boolean",
+          "description": "Pure-noarch SRPMs (header arch=noarch) build once per product arch when true (keeps the cross-arch noarch byte-compare probe fed). Default: false = collapse to a single build whose dispatch arch is picked by a stable hash of the full NVR display name. Chain merge: any explicit value overrides the parent."
+        },
+        "deterministic": {
+          "type": "boolean",
+          "description": "Deterministic build mode. Default: false. When true, builds carry deterministic macros/env baselines, a pinned buildhost, ccache guards, forced provenance and integrity gates; requires the merged dnf_cache_enabled = true and build_target != ba. Chain merge: true on any layer wins (OR) and cannot be turned off by a child layer."
+        },
+        "mtime_normalize": {
+          "type": "boolean",
+          "description": "Anchor ordinary (non-deterministic) builds to their start wall-clock: BUILDTIME and payload mtimes share one timestamp so locked-environment replay is byte-identical, while separate builds still differ. Ignored for deterministic products. Default: false."
+        },
+        "auto_replay": {
+          "type": "boolean",
+          "description": "Automatic locked-environment replay after successful builds of deterministic products. Unset = enabled (true); false turns it off. Only meaningful for deterministic products."
+        },
+        "replay_sampling": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Auto-replay sampling percentage, chosen deterministically per task hash. Unset = 100 (replay everything); 0 disables replay. Values above 100 are accepted and clamped to 100 with a warning at trigger time."
+        },
+        "_buildhost": {
+          "type": "string",
+          "description": "Value for the RPM _buildhost macro (BUILDHOST package header field). When unset the merged config uses the fixed value \"crbs\"."
+        },
+        "allow_srpm_download": {
+          "type": "boolean",
+          "description": "Per-product SRPM download policy override: true = public download for this product, false = operator/admin only. Unset = follow the global allow_srpm_download. The global public_access.download gate applies independently on top."
+        },
+        "hooks": {
+          "$ref": "#/$defs/HooksConfig",
+          "description": "Build script hook points; product hooks take priority over global hooks."
+        }
+      }
+    },
+    "RepoConfig": {
+      "type": "object",
+      "description": "A single dnf repository (product TOML [[repos]]); written verbatim into the base OS /etc/yum.repos.d/ .repo file.",
+      "additionalProperties": false,
+      "required": ["name", "baseurl"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Repository id; must be unique across the resolved product chain."
+        },
+        "baseurl": {
+          "type": "string",
+          "description": "Repository base URL."
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether the repo is enabled. Default: true."
+        },
+        "gpgcheck": {
+          "type": "boolean",
+          "description": "Whether dnf verifies package signatures. Default: false."
+        },
+        "gpgkey": {
+          "type": "string",
+          "description": "GPG key path or URL. Unset = no key."
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "dnf repo priority; lower wins. Default: 99."
+        },
+        "cost": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "dnf repo cost; lower is preferred. Default: 1000."
+        },
+        "module_hotfixes": {
+          "type": "boolean",
+          "description": "Allow packages from this repo to update modules. Default: false."
+        },
+        "exclude": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Package names excluded from this repo (excludepkgs)."
+        },
+        "includepkgs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Package names whitelisted for this repo."
+        },
+        "extra": {
+          "type": "string",
+          "description": "Extra options appended verbatim to the generated .repo file: one key=value per line (comment and empty lines allowed); also passed to dnf repoquery via --setopt."
+        }
+      }
+    },
+    "PostInitCommand": {
+      "type": "object",
+      "description": "A post-init command executed inside the chroot after base OS init (product TOML [[post_init]]), e.g. certificate or mirror customization.",
+      "additionalProperties": false,
+      "required": ["command"],
+      "properties": {
+        "command": {
+          "type": "string",
+          "description": "Shell command executed inside the chroot."
+        },
+        "ignore_failure": {
+          "type": "boolean",
+          "description": "Continue init when the command fails. Default: false (a failed command fails init so customizations cannot silently go missing)."
+        }
+      }
+    },
+    "ResourceOverride": {
+      "type": "object",
+      "description": "Static per-package resource profile (value type of ProductConfig.resource_overrides). Consumed hub-side by the scheduler admission gate as the fallback weight when the package has no EMA history; never dispatched to workers. Both fields are required.",
+      "additionalProperties": false,
+      "required": ["mem_gb", "cpu_cores"],
+      "properties": {
+        "mem_gb": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Expected peak resident memory of one build of the package, in GiB (same dimension as builds.peak_rss_kb)."
+        },
+        "cpu_cores": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Expected peak CPU usage of one build of the package, in cores (same dimension as builds.cpu_p90_cores)."
+        }
+      }
+    },
+    "WorkerConfig": {
+      "type": "object",
+      "description": "crbs-worker configuration (/etc/crbs/worker.toml). All keys are optional unless listed under 'required'; an omitted key falls back to the documented default. Unknown keys are rejected by the parser (deny_unknown_fields), mirroring 'additionalProperties': false.",
+      "additionalProperties": false,
+      "required": ["name", "hub_url", "token"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Worker display name shown in the hub worker list and dispatch logs; should be unique per hub."
+        },
+        "hub_url": {
+          "type": "string",
+          "description": "Hub base URL, e.g. https://hub.example.com:18443 (port = server.toml's listen port). Production must use https:// (the token travels as a Bearer header); plain http:// is loopback development only."
+        },
+        "arch": {
+          "type": "string",
+          "description": "Worker architecture (e.g. \"x86_64\", \"aarch64\"). Unset = detected from the local machine at runtime; set it explicitly where in-container detection is unreliable. The hub dispatches arch-matched builds."
+        },
+        "capacity": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1024,
+          "description": "Max concurrent builds; load fails fast outside 1..=1024 (same range as the server registration endpoint; out-of-range values are rejected, never clamped). Recommended below CPU cores minus one, bounded by disk and memory. Default: 1."
+        },
+        "token": {
+          "type": "string",
+          "description": "Worker registration token created hub-side (crbs-server worker create); equivalent to a long-term credential, so keep the file permission tight (e.g. 0640 root:crbs)."
+        },
+        "hub_ca_cert": {
+          "type": "string",
+          "description": "Optional path to the hub CA certificate (PEM) for self-signed / internal-CA setups. Unset = system default trust store."
+        },
+        "heartbeat_interval_secs": {
+          "type": "integer",
+          "minimum": 5,
+          "maximum": 110,
+          "description": "Heartbeat interval in seconds, carrying local load telemetry (load1/CPU/memory). Load fails fast below 5 (request-level timeout protection, no busy heartbeats) and above 110 (must stay clearly below the hub-side 120s freshness threshold or the worker is never schedulable). Default: 30."
+        },
+        "poll_timeout_secs": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Long-poll client timeout in seconds; the poll request carries ?wait=<value-5> (capped at 115, server clamps at 120). Load fails fast below 1 (would degrade to busy polling). Do not set too small: single artifacts reach 2GB and slow uploads may far exceed 30s. Default: 60."
+        },
+        "build_dir": {
+          "type": "string",
+          "description": "Build working directory (absolute path, '..' components rejected). Each build gets a build_id-namespaced subdirectory; reserve concurrent-capacity times per-build peak disk (including the chroot layer). Default: /var/lib/crbs/worker/builds."
+        },
+        "result_retention_days": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Days a local build result directory is kept before the periodic sweeper deletes it (mtime-based); 0 = keep forever. Hub-side result GC (server.toml result_gc_grace_hours) is independent. Default: 3."
+        },
+        "crbs_root": {
+          "type": "string",
+          "description": "Engine-world root (state DB and shared layers parent), pinned into the engine config the worker constructs; may differ from the server root in split deployments. Default: /var/lib/crbs."
+        },
+        "tmp_dir": {
+          "type": "string",
+          "description": "Engine tmp_dir (startup orphan-mount GC scan domain; overlay mount targets live under {tmp_dir}/.tmpXXXX/root, and full-memory builds also under .tmpXXXX/memroot/root). Must match crbs.toml's tmp_dir when set explicitly there; the engine default {crbs_root}/tmp is already covered by the crbs_root subtree scan. A diverging value leaves crash leftovers there uncovered by startup GC (per-build init cleanup and 'crbs gc --orphan-mounts' remain as fallbacks). Default: /var/tmp."
+        },
+        "tmpfs_dir": {
+          "type": "string",
+          "description": "Engine tmpfs_dir (legacy tmpfs build scan domain: current full-memory builds mount memroot under tmp_dir, this domain only sweeps historical leftovers); must match crbs.toml's tmpfs_dir like tmp_dir does. Default: /dev/shm."
+        },
+        "startup_mount_gc": {
+          "$ref": "#/$defs/StartupMountGc",
+          "description": "Startup orphan-mount GC policy. Default: auto."
+        },
+        "build_timeout_secs": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Fallback build timeout in seconds for remote builds without an explicit timeout (a hung build otherwise occupies the hub running row and a worker permit forever). 0 disables the fallback (unlimited); an explicit request --timeout wins, including --timeout 0 = explicitly unlimited. Default: 86400."
+        },
+        "min_free_disk_gb": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Disk watermark (GB) on the build_dir filesystem: when free space drops below it, the worker skips claiming tasks for that round while heartbeats and running builds continue; 0 disables the gate. Same name and semantics as server.toml's min_free_disk_gb (the hub-side intake gate); configure each side per its own disk. Default: 1."
+        },
+        "min_free_mem_mb": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Memory watermark (MB) of MemAvailable: when free memory drops below it, the worker skips claiming tasks for that round while heartbeats and running builds continue; a failed /proc/meminfo read (including non-Linux hosts) lets the round through (fail-open, same posture as the disk gate); 0 disables the gate. Default: 512."
+        }
+      }
+    },
+    "StartupMountGc": {
+      "type": "string",
+      "description": "Worker startup orphan-mount GC policy: auto (run only when the hub registration response reports no active local builds), always (unconditional, for dedicated-machine deployments), never (leave mounts to guarded entries like 'crbs gc --orphan-mounts').",
+      "enum": ["auto", "always", "never"]
+    },
+    "ServerConfig": {
+      "type": "object",
+      "description": "crbs-server configuration (/etc/crbs/server.toml). Precedence: CLI arguments > config file > built-in defaults.",
+      "additionalProperties": false,
+      "properties": {
+        "crbs_root": {
+          "type": "string",
+          "description": "Server-world data root; state DB, uploads, artifacts, srpm token key, CSRF key and run_dir derive from it. Default: /var/lib/crbs. (Engine world has its own root in crbs.toml.)"
+        },
+        "listen": {
+          "type": "string",
+          "description": "Listen address (host:port). Default: 127.0.0.1:9090. auth_enabled=false only allows loopback addresses."
+        },
+        "max_local_builds": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Concurrency cap for builds executed locally on the hub; 0 means num_cpus. Builds dispatched to workers are limited by each worker's capacity instead. Default: 0."
+        },
+        "build_timeout_secs": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Fallback build timeout in seconds for hub-local builds that do not specify an explicit timeout (a hung build otherwise holds the building row and a semaphore slot until server restart; worker-side builds use worker.toml's build_timeout_secs). 0 disables the fallback (unlimited). An explicit request timeout wins (including timeout=0 meaning explicitly unlimited). Default: 86400."
+        },
+        "shutdown_timeout_secs": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Graceful shutdown timeout in seconds, covering HTTP connection draining and waiting for active builds. Default: 60."
+        },
+        "allow_product_management": {
+          "type": "boolean",
+          "description": "Enable destructive product endpoints (init/clean). Requires auth_enabled=true, otherwise the server refuses to start. Default: false."
+        },
+        "auth_enabled": {
+          "type": "boolean",
+          "description": "Require Bearer token authentication. Default: true; false is for local development only (loopback enforced)."
+        },
+        "strict_ownership": {
+          "type": "boolean",
+          "description": "Deprecated compatibility key: accepted so older server.toml files keep loading; the value has no effect. Read access is decided at product visibility level. Default: false."
+        },
+        "submit_rate_limit": {
+          "$ref": "#/$defs/SubmitRateLimitConfig",
+          "description": "Per-user fixed-window submit rate limiting (in-memory, per instance; worker auth path exempt). Default: disabled."
+        },
+        "upload_max_size_mb": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "SRPM upload size limit in MB. 0 rejects all uploads (it does not mean unlimited). Default: 500."
+        },
+        "min_free_disk_gb": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Minimum free disk space (GB) required on crbs_root before accepting builds; 0 disables the check. Default: 1."
+        },
+        "gc_result_retention": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of GC task results kept in memory; 0 = never prune (all status entries kept in memory, not \"keep none\"). Default: 100."
+        },
+        "product_result_retention": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of product init/clean task results kept in memory. When unset, gc_result_retention is reused."
+        },
+        "db_retention_days": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Delete audit_logs/worker_tasks/builds/tasks rows older than this many days (builds only after their result dir was GC'd); 0 disables. Default: 90."
+        },
+        "cors_allowed_origins": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "CORS allow-list of origins. Empty disables CORS. Default: empty."
+        },
+        "low_priority_reserve_ratio": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Fraction of concurrency slots reserved for default-priority tasks (0.0-1.0). Default: 0.25."
+        },
+        "scheduler_mode": {
+          "$ref": "#/$defs/SchedulerMode",
+          "description": "Scheduler mode: auto (workers first, local fallback), local_only, distributed_only. Default: auto."
+        },
+        "resource_requirements_enabled": {
+          "type": "boolean",
+          "description": "Hard-floor consumption master switch: when true, the planner eligibility filter and the hub-local pickup precheck check builds.req_min_* dimensions (falling back per-dimension to the profile table's declared columns) against worker capacity, treating missing telemetry on a required dimension as fail-closed (the worker cannot carry the build); when false (default) the whole segment is skipped. Does not affect collection, learning or display. Default: false."
+        },
+        "resource_profile_weights_enabled": {
+          "type": "boolean",
+          "description": "Learned-weight consumption switch: when true (default) the watermark admission sum reads effective weights from the package_resource_profiles table (censored rows use max(ema, max) for memory; missing dimensions fall back to resource_overrides); when false the sum only contains resource_overrides. Profile learning is unconditional and unaffected by this switch. Default: true."
+        },
+        "resource_local_watermark_enabled": {
+          "type": "boolean",
+          "description": "Watermark gate for hub-local builds (independent switch): when true, local pickup first checks a pseudo-worker view of the hub itself (self-sampled /proc telemetry plus the committed weight sum of running local builds plus each candidate's weight, with candidates tried in order so a rejected head does not block later builds) against the same watermarks as the worker admission gate, and skips local pickup for the tick when over water (remote dispatch is not blocked; the rejection is recorded in the dispatch attribution map). When false the local path adds no gate (the hub also serves the API/UI, so no gate is applied to local builds by default). Local hard floors follow resource_requirements_enabled, not this switch. Default: false."
+        },
+        "resource_dispatch_watermark_enabled": {
+          "type": "boolean",
+          "description": "Distributed dispatch watermark master switch: when true (default) the planner checks each placement-order target's live telemetry plus the committed weight sum (only builds dispatched within the 90s ramp window count, since load1 already reflects settled builds) plus the candidate weight against the memory/CPU watermarks before dispatching, walking to the next candidate when a node is over water; when false the placement-order target is dispatched directly (hard-floor eligibility filtering is unaffected; missing telemetry always fails open). Independent of resource_local_watermark_enabled. Default: true."
+        },
+        "resource_hard_req_stall_secs": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Hard-floor stall note threshold in seconds: after a build has been rejected by the hard-floor filter (no online worker satisfies the declared floor) continuously for this long, one build note explains the cause and how to unblock the build (cancel it or relax the floor); the note is emitted once per build stay in pending while the hub process keeps running (the dedup marker is in-memory and resets on restart). 0 disables the note. Default: 3600."
+        },
+        "resource_steering_enabled": {
+          "type": "boolean",
+          "description": "Heavy steering master switch: when true, heavy candidates (a declared req_min_* dimension, an effective weight at or above the heavy weight threshold, or an SRPM at or above resource_heavy_srpm_bytes) are ordered by a normalized headroom score across the eligible workers after the full eligibility filter (arch, free slot, init gate, hard floors): memory dimension (mem_total * resource_mem_watermark - used - sum_mem) / mem_total, CPU dimension (ncpu - load1 - sum_cpu) / ncpu, node score = min of the two (bottleneck normalized); a missing telemetry dimension does not participate and nodes with no score rank after scored nodes; the watermark gate still applies. The declared-req arm only fires when resource_requirements_enabled is on. When false (default) every candidate takes the least-loaded order head, bit-for-bit identical to the non-steering path - KPI rollback is turning this switch off, no code rollback. Default: false."
+        },
+        "resource_heavy_srpm_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "SRPM size threshold in bytes for the heavy candidate decision: builds whose srpm_size_bytes reaches this value are steered as heavy even without a learned profile (covers unprofiled heavy sources such as llvm/chromium; profiled builds go through the weight threshold arm). 0 disables this arm. Default: 104857600."
+        },
+        "resource_learned_gates_enabled": {
+          "type": "boolean",
+          "description": "Learned-gate shadow recording switch: when true, each dispatch placement is evaluated per gate for learned keys (package_resource_profiles rows with learned_samples >= 1) and one structured decision log record per gate is emitted - the memory gate (node available memory, mem_total_kb x (1 - mem_used_pct/100), must reach learned_max_mem_kb x 1.2) and the tmpfs gate (node tmpfs headroom, capacity mem_total_kb / 2 with usage counted as 0, must reach learned_max_tmpfs_kb). Shadow only: records never reject, unlearned keys and nodes with missing telemetry are unaffected. When false (default) there is no extra profile readback and no records; dispatch behavior is unchanged. Default: false."
+        },
+        "resource_tmpfs_gate_enforced": {
+          "type": "boolean",
+          "description": "Learned tmpfs gate enforcement switch (independent of the shadow switch): when true, the planner traversal appends the tmpfs gate after the watermark gate passes - a candidate whose learned tmpfs peak exceeds the node tmpfs capacity (mem_total_kb / 2, same formula as the shadow gate) is rejected on that node and traversal falls over to the next one; an all-worker reject is attributed to the watermark_tmpfs dimension. Fail-open arms match the shadow: unlearned keys, missing learned values and nodes without mem_total pass; capacity exactly meeting the need passes. Gate inputs are read back when either this switch or resource_learned_gates_enabled is on. When false (default) dispatch behavior is bit-identical to the baseline. Default: false."
+        },
+        "resource_mem_watermark": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Admission memory watermark coefficient: used memory plus committed build weight reaching mem_total x coefficient rejects the node. Lower tightens, higher loosens (>1 effectively disables the gate; experimental). Must be a finite value > 0.0; invalid values are rejected at load time. Default: 0.90."
+        },
+        "resource_cpu_watermark": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Admission CPU watermark coefficient: load1 plus committed p90 cores reaching ncpu x coefficient rejects the node. load1 can exceed ncpu, so >1 loosens the gate (e.g. 1.05 tolerates 5% overload; experimental). Must be a finite value > 0.0; invalid values are rejected at load time. Default: 1.00."
+        },
+        "local": {
+          "$ref": "#/$defs/LocalConfig",
+          "description": "Local daemon settings."
+        },
+        "public_access": {
+          "$ref": "#/$defs/PublicAccessConfig",
+          "description": "Anonymous access control for the read-only Web UI, logs and artifact downloads."
+        },
+        "web_ui_enabled": {
+          "type": "boolean",
+          "description": "Mount the Web UI routes (/ui/* and the / dashboard). Default: true."
+        },
+        "force_secure_cookies": {
+          "type": "boolean",
+          "description": "Add the Secure attribute to session/login cookies. Must be true when a TLS-terminating reverse proxy fronts a loopback HTTP server. Default: false."
+        },
+        "log_sanitization": {
+          "$ref": "#/$defs/LogSanitizationConfig",
+          "description": "Log redaction settings."
+        },
+        "result_dir": {
+          "type": "string",
+          "description": "Artifact root override for the hub. When unset, derived from crbs_root."
+        },
+        "upload_dir": {
+          "type": "string",
+          "description": "SRPM upload staging directory. Default: {crbs_root}/uploads."
+        },
+        "state_db_path": {
+          "type": "string",
+          "description": "SQLite state database path. Default: {crbs_root}/crbs.db."
+        },
+        "artifact_dir": {
+          "type": "string",
+          "description": "Worker log persistence directory. Default: {crbs_root}/artifacts."
+        },
+        "tls": {
+          "$ref": "#/$defs/ServerTlsConfig",
+          "description": "Built-in HTTPS (tokio-rustls). When unset the server speaks plain HTTP behind an optional reverse proxy."
+        },
+        "allow_srpm_download": {
+          "type": "boolean",
+          "description": "Allow source RPM downloads. false restricts SRPM downloads to operator/admin. Default: true."
+        },
+        "db_max_connections": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Upper bound for the DB connection pool. Priority: CRBS_DB_MAX_CONNECTIONS env > this key > built-in default; invalid values warn and fall through to the next level. Note: this schema is stricter than the runtime resolver - 0 is rejected here at submit/parse time, while the runtime treats it (and other invalid values) as warn-and-fall-through instead of a hard error. Consumed by crbs-server only. Default: unset (built-in default 8)."
+        },
+        "resource_profile_min_peak_rss_kb": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Light-package threshold in KB: succeeded builds whose sampled peak RSS (anon, KB) is below this value never create or update package resource profile rows (the builds resource columns are still recorded; node-OOM censoring is not affected). 0 disables the threshold. Default: 1048576."
+        },
+        "resource_censor_headroom": {
+          "type": "number",
+          "minimum": 1,
+          "description": "Censoring headroom multiplier for resource profile learning: a node-OOM sample raises the profile's learned max to observed peak x headroom (max only ever rises). Must be a finite value >= 1.0; values below 1.0 or non-finite are rejected at load time. Default: 1.25."
+        }
+      }
+    },
+    "PublicAccessConfig": {
+      "type": "object",
+      "description": "Anonymous access control (server.toml [public_access]). Defaults to fully open (Koji/OBS style); write operations always require authentication.",
+      "additionalProperties": false,
+      "properties": {
+        "view": {
+          "type": "boolean",
+          "description": "Allow anonymous viewing of products/builds/tasks in the Web UI. Default: true."
+        },
+        "logs": {
+          "type": "boolean",
+          "description": "Allow anonymous build log viewing. Default: true."
+        },
+        "download": {
+          "type": "boolean",
+          "description": "Allow anonymous artifact downloads. false requires a valid token; read access beyond that is decided at product visibility level. Default: true."
+        }
+      }
+    },
+    "LogSanitizationConfig": {
+      "type": "object",
+      "description": "Log redaction settings (server.toml [log_sanitization]). Default: token redaction on, URL and path redaction off.",
+      "additionalProperties": false,
+      "properties": {
+        "redact_tokens": {
+          "type": "boolean",
+          "description": "Redact `token` query parameters (e.g. signed SRPM download tokens) in access logs. Default: true."
+        },
+        "redact_urls": {
+          "type": "boolean",
+          "description": "Redact user credentials embedded in URLs (http://user:pass@host/). Default: false."
+        },
+        "redact_paths": {
+          "type": "boolean",
+          "description": "Reduce repo baseurl paths in logs to their basename. Default: false."
+        }
+      }
+    },
+    "LocalConfig": {
+      "type": "object",
+      "description": "Local daemon settings (server.toml [local]).",
+      "additionalProperties": false,
+      "properties": {
+        "enable": {
+          "type": "boolean",
+          "description": "Enable local daemon auto-discovery. Default: true."
+        },
+        "daemon_auto": {
+          "type": "boolean",
+          "description": "Prefer the local daemon in the default `crbs build` path. false (default) builds locally unless --daemon is passed. Default: false."
+        },
+        "run_dir": {
+          "type": "string",
+          "description": "Directory for pid/port files. When unset, chosen from the effective runtime user."
+        },
+        "idle_timeout_secs": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Auto-exit timeout for the idle daemon in seconds; 0 disables auto-exit. Default: 300."
+        }
+      }
+    },
+    "SubmitRateLimitConfig": {
+      "type": "object",
+      "description": "Per-user fixed-window submit rate limit (server.toml [submit_rate_limit]). Applies to build submission and task rebuild/reproduce endpoints.",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable the limiter. Default: false (bulk rebuild workflows may otherwise trip 429)."
+        },
+        "requests": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Allowed requests per window when enabled. Default: 30."
+        },
+        "per_secs": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Window length in seconds. Default: 60."
+        }
+      }
+    },
+    "ServerTlsConfig": {
+      "type": "object",
+      "description": "Built-in HTTPS configuration (server.toml [tls]).",
+      "additionalProperties": false,
+      "required": ["cert", "key"],
+      "properties": {
+        "cert": {
+          "type": "string",
+          "description": "Path to the PEM-encoded server certificate."
+        },
+        "key": {
+          "type": "string",
+          "description": "Path to the PEM-encoded server private key."
+        }
+      }
+    },
+    "SchedulerMode": {
+      "type": "string",
+      "description": "Scheduler mode: auto (dispatch to workers first, fall back to local), local_only (hub-local only), distributed_only (workers only).",
+      "enum": ["auto", "local_only", "distributed_only"]
+    }
+  }
+}
