@@ -1,0 +1,5 @@
+# 测试线程默认栈仅 2MiB；clap 派生宏在 debug 构建里递归很深，解析最大
+# 的子命令结构体（BuildArgs）会在 Linux 上溢出（signal 6）。libtest 按
+# RUST_MIN_STACK 给每个测试线程分配栈，这里统一抬高，行为与宿主机无关。
+[env]
+RUST_MIN_STACK = "33554432"

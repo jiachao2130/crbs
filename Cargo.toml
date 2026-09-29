@@ -1,0 +1,76 @@
+[workspace]
+members = ["crates/crbs-core", "crates/crbs", "crates/crbs-server", "crates/crbs-priv-helper", "crates/crbs-worker", "crates/crbs-normalize"]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+authors = ["Jia Chao <jiachao2130@126.com>"]
+edition = "2021"
+license = "MulanPSL-2.0"
+repository = "https://gitcode.com/jiachao2130/crbs.git"
+homepage = "https://gitcode.com/jiachao2130/crbs.git"
+rust-version = "1.82"
+
+[workspace.dependencies]
+tokio = { version = "1.45", features = ["rt-multi-thread", "macros"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+anyhow = "1.0"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["json", "env-filter"] }
+chrono = { version = "0.4", features = ["serde"] }
+nix = { version = "0.29", features = ["user", "signal"] }
+tempfile = "3.14"
+tokio-util = "0.7"
+which = "7.0"
+glob = "0.3"
+axum = { version = "0.8", features = ["multipart"] }
+tower-http = { version = "0.7", features = ["cors", "trace", "limit", "fs", "catch-panic"] }
+tower = { version = "0.5", features = ["util"] }
+uuid = { version = "1.10", features = ["v4"] }
+fs4 = { version = "0.12", features = ["sync", "tokio"] }
+getrandom = "0.2"
+hex = "0.4.3"
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "multipart", "json", "stream"] }
+urlencoding = "2.1"
+sha2 = "0.10"
+# 密码哈希：argon2id 默认参数 + 每密码随机盐。
+argon2 = "0.5"
+maud = { version = "0.27", features = ["axum"] }
+comfy-table = "7.1"
+humansize = "2.1"
+# diff 渲染：产品配置历史 revision 对比。
+similar = "2"
+# CLI 参数解析：workspace 基础 features 只含 derive，cargo/env 由各 crate 按需追加。
+clap = { version = "4.5", features = ["derive"] }
+# 配置文件解析。
+toml = "0.8"
+# 注释保留式配置写入（crbs remote add）：toml 0.8 内置的 toml_edit 0.20
+# 不满足 derive/格式保留需求，显式取 0.22（round-trip 保留注释与格式）。
+toml_edit = "0.22"
+# 数据库访问：runtime-tokio + sqlite + any + derive（#[derive(sqlx::FromRow)] 所需）；
+# postgres 由各 crate feature 追加。default features（any/macros/migrate/json）已关：
+# 代码零 query! 编译期宏（derive 即可）、零 migrate、零 Json 列类型。
+sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio", "sqlite", "any", "derive"] }
+# 域错误定义。
+thiserror = "2.0"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+strip = true
+
+[profile.dev]
+opt-level = 0
+
+[workspace.lints.rust]
+# cfg(test) 在 rustc 1.87 起才是内建已知 cfg；更早的工具链（MSRV 1.82）上
+# cargo 不为普通编译目标传递它的 check-cfg，unexpected_cfgs 会对 #[cfg(test)]
+# 误报。在此显式登记，新旧工具链行为一致；后续新增自定义 cfg 也在此追加。
+unexpected_cfgs = { level = "warn", check-cfg = ["cfg(test)"] }
+
+# 生产代码零 unwrap/expect 纪律的机制化：默认 deny，白名单须逐处给理由。
+# 测试代码放行走仓库根 clippy.toml（allow-unwrap/expect-in-tests）。
+[workspace.lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"

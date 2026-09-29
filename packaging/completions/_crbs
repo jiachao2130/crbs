@@ -1,0 +1,2973 @@
+#compdef crbs
+
+autoload -U is-at-least
+
+_crbs() {
+    typeset -A opt_args
+    typeset -a _arguments_options
+    local ret=1
+
+    if is-at-least 5.2; then
+        _arguments_options=(-s -S -C)
+    else
+        _arguments_options=(-s -C)
+    fi
+
+    local context curcontext="$curcontext" state line
+    _arguments "${_arguments_options[@]}" \
+'(-q --quiet)-v[Verbose output (debug-level logging)]' \
+'(-q --quiet)--verbose[Verbose output (debug-level logging)]' \
+'(-v --verbose)-q[Quiet mode (warning and error only)]' \
+'(-v --verbose)--quiet[Quiet mode (warning and error only)]' \
+'--offline[Read product config from local disk instead of the hub]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+":: :_crbs_commands" \
+"*::: :->crbs" \
+&& ret=0
+    case $state in
+    (crbs)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:crbs-command-$line[1]:"
+        case $line[1] in
+            (init)
+_arguments "${_arguments_options[@]}" \
+'--remote=[Hub URL for config source (falls back to profile / \`remote.default\`)]:URL|NAME: ' \
+'--token=[Hub API token (defaults to profile token/env → CRBS_TOKEN)]:TOKEN: ' \
+'--ca-cert=[PEM CA cert for hub TLS (falls back to profile / \`CRBS_CA_CERT\`)]:PATH:_files' \
+'--format=[Output format\: text (default) or json]:FORMAT:((text\:"Human-readable text (default)"
+json\:"Machine-readable JSON"))' \
+'--force[Force overwrite existing base_os]' \
+'(-q --quiet)-v[Verbose output (debug-level logging)]' \
+'(-q --quiet)--verbose[Verbose output (debug-level logging)]' \
+'(-v --verbose)-q[Quiet mode (warning and error only)]' \
+'(-v --verbose)--quiet[Quiet mode (warning and error only)]' \
+'--offline[Read product config from local disk instead of the hub]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+':product -- Product name, e.g. cc9:' \
+&& ret=0
+;;
+(build)
+_arguments "${_arguments_options[@]}" \
+'-p+[Product name (can be inferred from the build record in --attach/--reproduce mode)]:PRODUCT: ' \
+'--product=[Product name (can be inferred from the build record in --attach/--reproduce mode)]:PRODUCT: ' \
+'-l+[Read SRPM list from a file (one path per line, glob expansion handled by the program)]:LIST:_files' \
+'--list=[Read SRPM list from a file (one path per line, glob expansion handled by the program)]:LIST:_files' \
+'(-l --list --attach --reproduce)--rebuild=[Rebuild a previously submitted task by ID via crbs-server (remote or local daemon). Reuses the recorded source SRPMs and build options of the original task]:TASK_ID: ' \
+'-j+[Number of concurrent workers (default\: num_cpus)]:JOBS: ' \
+'--jobs=[Number of concurrent workers (default\: num_cpus)]:JOBS: ' \
+'-t+[Per-package build timeout in seconds (0 = unlimited)]:TIMEOUT: ' \
+'--timeout=[Per-package build timeout in seconds (0 = unlimited)]:TIMEOUT: ' \
+'--stage=[rpmbuild stage (bb=binary package, bs=source package, ba=both)]:STAGE:(bb bs ba)' \
+'*-D+[RPM macro definitions (can be repeated to override config files; reserved keys like _topdir and empty values are rejected)]:KEY=VALUE: ' \
+'*--define=[RPM macro definitions (can be repeated to override config files; reserved keys like _topdir and empty values are rejected)]:KEY=VALUE: ' \
+'*--with=[Enable conditional build options (can be repeated)]:FEATURE: ' \
+'*--without=[Disable conditional build options (can be repeated)]:FEATURE: ' \
+'(--arches)--target=[Target architecture (e.g. x86_64_v3, aarch64)]:ARCH: ' \
+'--dist=[Set the %dist macro (e.g. .fc44, .el9). Restricted to \[a-zA-Z0-9._-\]; a leading dot is added if missing]:TAG: ' \
+'--repo=[Specify local repo path (default {crbs_root}/repo/{product}/, overrides config)]:REPO:_files' \
+'--retry=[Override configured max retry count (default uses global/product config)]:RETRY: ' \
+'--priority=[Build priority (0=default, 1=high, 2=critical). Only recorded for local direct builds; participates in queue priority for remote/daemon submissions]:PRIORITY: ' \
+'--min-mem=[Minimum memory requirement for placement (e.g. 4G, 512M, 2097152 KB)]:SIZE: ' \
+'--min-ncpu=[Minimum CPU core count for placement (e.g. 8)]:CORES: ' \
+'--min-disk=[Minimum free disk requirement for placement (e.g. 20G, 1073741824 KB)]:SIZE: ' \
+'*--arches=[Target architectures, comma-separated or repeatable (e.g. x86_64,aarch64). Defaults to arches in the product config, or the local architecture if not configured. Multi-arch fan-out is only supported with --remote; local builds run one host-arch build (extra arches produce a warning) or reject when the requested arch is not the host arch. Mutually exclusive with --target\: --arches is the multi-arch fan-out LIST form (remote builds only), while --target pins a single micro-architecture target]:ARCH: ' \
+'*--arch=[Target architectures, comma-separated or repeatable (e.g. x86_64,aarch64). Defaults to arches in the product config, or the local architecture if not configured. Multi-arch fan-out is only supported with --remote; local builds run one host-arch build (extra arches produce a warning) or reject when the requested arch is not the host arch. Mutually exclusive with --target\: --arches is the multi-arch fan-out LIST form (remote builds only), while --target pins a single micro-architecture target]:ARCH: ' \
+'*--label=[Task label in KEY=VALUE form (repeatable; max 16 labels, key ≤64 chars, value ≤256 chars, duplicate keys rejected)]:KEY=VALUE: ' \
+'--backend=[Container backend (nspawn=default, chroot)]:BACKEND: ' \
+'--memory-max=[Hard memory limit (nspawn backend only, e.g. 512M / 2G)]:MEMORY_MAX: ' \
+'--cpu-quota=[CPU quota limit (nspawn backend only, e.g. 200% = 2 cores)]:CPU_QUOTA: ' \
+'(--detach --reproduce)--attach=[Attach to a running or finished build task by numeric ID. Available in local, daemon, and remote modes]:ID: ' \
+'--remote=[Run build via a remote crbs-server. Argument is a URL or a profile name from \[remote.profiles\] in the config file. If the config sets \`remote.default\`, this option can be omitted to use the default remote]:URL|NAME: ' \
+'--token=[Remote server API token (Bearer). Defaults to profile token/token_env/token_file → CRBS_TOKEN env var]:TOKEN: ' \
+'--ca-cert=[Remote server CA certificate path (self-signed/internal CA scenarios). Defaults to profile ca_cert → CRBS_CA_CERT env var → system default trust store]:PATH:_files' \
+'--format=[Output format\: text (default) or json (machine-readable, final summary only)]:FORMAT:((text\:"Human-readable text (default)"
+json\:"Machine-readable JSON"))' \
+'--summary-limit=[Packages shown per category in the chain summary (default 20, 0 = no truncation). Has no effect together with \`--list-failed\` / \`--list-succeeded\` (those force full lists)]:SUMMARY_LIMIT: ' \
+'--reproduce=[Reproduce the specified task'\''s locked dependency snapshot and rebuild (idempotency check). The ID is a task ID (same domain as --rebuild and remote reproduce). With --detach the replay is submitted and not followed; requires --remote]:TASK_ID: ' \
+'-s[Enable shared_layer dependency cache (useful when rebuilding the same package)]' \
+'--shared-layer[Enable shared_layer dependency cache (useful when rebuilding the same package)]' \
+'--tmpfs[Enable tmpfs for the BUILD directory]' \
+'--ccache[Enable C/C++ compilation cache (useful for repeatedly built C/C++ packages)]' \
+'--fail-fast[Stop all builds if any package fails]' \
+'--timeout-cancel[Also cancel remote builds when the follow timeout is reached (legacy behavior); by default the wait is abandoned and the builds keep running on the server]' \
+'--nocheck[Skip the %check stage]' \
+'--noclean[Skip the distro cleanup stages (%clean and rmbuild); BUILD-tree reclamation stays with the engine teardown]' \
+'--nodebuginfo[Do not generate debuginfo packages]' \
+'--no-publish[Do not publish this build'\''s RPMs to the product repo (Koji --scratch style; remote/daemon submissions only — standalone local builds have no hub repo)]' \
+'--no-consume[Do not consume the product repo for this build (the injected crbs-product.repo is omitted; tightening only — no flag can re-enable consumption disabled by the product config or product visibility; remote/daemon submissions only)]' \
+'-C[Enable dependency chain builds (dependency ordering + staged builds + local repo + incremental)]' \
+'--chain[Enable dependency chain builds (dependency ordering + staged builds + local repo + incremental)]' \
+'-o[With --chain, only output the build order without building (dry-run)]' \
+'--order-only[With --chain, only output the build order without building (dry-run)]' \
+'-f[Ignore incremental cache and force rebuilding all packages]' \
+'--force[Ignore incremental cache and force rebuilding all packages]' \
+'--result-repo[Enable local result repo injection in --chain mode (default ON)]' \
+'--no-result-repo[Disable local result repo injection in --chain mode]' \
+'--skip-unsupported-arches[With an explicit --arches list, skip arches the SRPM spec excludes (ExclusiveArch/ ExcludeArch) instead of rejecting the whole submission. Skipped arches are named in the submission output. Default\: reject the submission (fail fast). Only affects explicit arch requests; product-default fan-out and batch builds already skip incompatible arches. Local builds are unaffected\: an incompatible spec always fails the whole build (exit 4), with or without this flag]' \
+'--assume-independent[Skip the batch inter-SRPM BuildRequires check (silences the -C/--chain hint)]' \
+'--no-network[Disable network (enabled by default)]' \
+'(--attach --follow-logs)--detach[Submit the build task and return immediately with build_id / short_id. Available in local, daemon, and remote modes]' \
+'(--detach)--download[Download build artifacts to local result_dir after a successful remote build. By default artifacts stay on the server; use this to fetch them automatically]' \
+'(--remote --daemon)--local[Force local direct build, ignoring \`remote.default\` in the config]' \
+'(--remote --local)--daemon[Run build via the local crbs-server daemon. If the daemon is not running, the program will try to start it automatically; falls back to local direct build on failure]' \
+'--follow-logs[Follow build log output in real time (default\: only status lines). Available in local, daemon, and remote modes]' \
+'--list-failed[Append every failed package name to the summary (one per line), untruncated]' \
+'--list-succeeded[Append every succeeded package name to the summary (one per line), untruncated]' \
+'--concise[Concise summary\: a single \`Total/Succeeded/Failed/Skipped/Wall\` line. Named so it is not confused with the global \`--quiet\` (tracing level)]' \
+'--verbose-summary[Restore the legacy verbose summary\: full package name lists on every line. Named so it is not confused with the global \`--verbose\` (tracing level)]' \
+'--reproduce-keep-tmp-on-failure[Keep temporary repo and base_os on --reproduce failure for debugging (default\: cleaned up)]' \
+'(--reproduce)--no-reproduce[Do not record provenance (skip URL resolution, package_cache copy, build_packages.json). This build cannot be reproduced later with \`crbs build --reproduce\`]' \
+'(--reproduce)--repro-from-srpm[Replay BUILDHOST/BUILDTIME from the SRPM header into the build (repro-from-srpm mode)\: header fields stay true to the source SRPM, the build environment is NOT restored, so payload bytes are not guaranteed. The server (or the local build) probes each SRPM and injects the values. Mutually exclusive with --reproduce and --chain]' \
+'(-q --quiet)-v[Verbose output (debug-level logging)]' \
+'(-q --quiet)--verbose[Verbose output (debug-level logging)]' \
+'(-v --verbose)-q[Quiet mode (warning and error only)]' \
+'(-v --verbose)--quiet[Quiet mode (warning and error only)]' \
+'--offline[Read product config from local disk instead of the hub]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'*::srpm -- SRPM file paths or directories (directories are scanned for *.src.rpm). Alternatively use --list to read from a file; at least one source is required:_files' \
+&& ret=0
+;;
+(shell)
+_arguments "${_arguments_options[@]}" \
+'-c+[Run command non-interactively; non-zero exits are reported as failure (exit code 2)]:COMMAND: ' \
+'*--bind=[Mount host directories into the container (format\: host\[\:container\[\:ro|rw\]\], repeatable)]:BIND: ' \
+'--backend=[Container backend (nspawn=default, chroot)]:BACKEND: ' \
+'--memory-max=[Hard memory limit (nspawn backend only, e.g. 512M / 2G)]:MEMORY_MAX: ' \
+'--cpu-quota=[CPU quota limit (nspawn backend only, e.g. 200% = 2 cores)]:CPU_QUOTA: ' \
+'--format=[Output format\: text (default) or json]:FORMAT:((text\:"Human-readable text (default)"
+json\:"Machine-readable JSON"))' \
+'--no-network[Disable network (enabled by default)]' \
+'(-q --quiet)-v[Verbose output (debug-level logging)]' \
+'(-q --quiet)--verbose[Verbose output (debug-level logging)]' \
+'(-v --verbose)-q[Quiet mode (warning and error only)]' \
+'(-v --verbose)--quiet[Quiet mode (warning and error only)]' \
+'--offline[Read product config from local disk instead of the hub]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+':product -- Product name:' \
+&& ret=0
+;;
+(clean)
+_arguments "${_arguments_options[@]}" \
+'--remote=[Hub URL for config source (falls back to profile / \`remote.default\`)]:URL|NAME: ' \
+'--token=[Hub API token (defaults to profile token/env → CRBS_TOKEN)]:TOKEN: ' \
+'--ca-cert=[PEM CA cert for hub TLS (falls back to profile / \`CRBS_CA_CERT\`)]:PATH:_files' \
+'--format=[Output format\: text (default) or json]:FORMAT:((text\:"Human-readable text (default)"
+json\:"Machine-readable JSON"))' \
+'--yes[Skip the confirmation prompt]' \
+'(-q --quiet)-v[Verbose output (debug-level logging)]' \
+'(-q --quiet)--verbose[Verbose output (debug-level logging)]' \
+'(-v --verbose)-q[Quiet mode (warning and error only)]' \
+'(-v --verbose)--quiet[Quiet mode (warning and error only)]' \
+'--offline[Read product config from local disk instead of the hub]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+':product -- Product name:' \
+&& ret=0
+;;
+(debug)
+_arguments "${_arguments_options[@]}" \
+'-c+[Run command non-interactively; non-zero exits are reported as failure (exit code 2)]:COMMAND: ' \
+'*--bind=[Mount host directories into the container (format\: host\[\:container\[\:ro|rw\]\], repeatable)]:BIND: ' \
+'--backend=[Container backend (nspawn=default, chroot)]:BACKEND: ' \
+'--memory-max=[Hard memory limit (nspawn backend only, e.g. 512M / 2G)]:MEMORY_MAX: ' \
+'--cpu-quota=[CPU quota limit (nspawn backend only, e.g. 200% = 2 cores)]:CPU_QUOTA: ' \
+'--format=[Output format\: text (default) or json]:FORMAT:((text\:"Human-readable text (default)"
+json\:"Machine-readable JSON"))' \
+'--no-network[Disable network (enabled by default)]' \
+'(-q --quiet)-v[Verbose output (debug-level logging)]' \
+'(-q --quiet)--verbose[Verbose output (debug-level logging)]' \
+'(-v --verbose)-q[Quiet mode (warning and error only)]' \
+'(-v --verbose)--quiet[Quiet mode (warning and error only)]' \
+'--offline[Read product config from local disk instead of the hub]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+':task -- Build ID (incremental integer, execution domain):' \
+&& ret=0
+;;
+(status)
+_arguments "${_arguments_options[@]}" \
+'-p+[Filter by product]:PRODUCT: ' \
+'--product=[Filter by product]:PRODUCT: ' \
+'-l+[Number of entries to show (0 = all)]:LIMIT: ' \
+'--limit=[Number of entries to show (0 = all)]:LIMIT: ' \
+'--format=[Output format\: text (default) or json]:FORMAT:((text\:"Human-readable text (default)"
+json\:"Machine-readable JSON"))' \
+'*-f+[Filter by status (comma-separated or repeatable\: succeeded,failed,building,pending,timeout,cancelled)]:FILTER: ' \
+'*--filter=[Filter by status (comma-separated or repeatable\: succeeded,failed,building,pending,timeout,cancelled)]:FILTER: ' \
+'--label=[Filter by task label (KEY=VALUE, exact key and value match)]:KEY=VALUE: ' \
+'--remote=[Operate against a remote crbs-server (URL or profile name from config). If the config sets \`remote.default\`, this option can be omitted to use the default remote]:URL|NAME: ' \
+'--token=[Remote server API token (defaults to CRBS_TOKEN or the profile token_env/token_file)]:TOKEN: ' \
+'--task=[Show a single task by ID (flag form; also accepts a positional ID)]:ID: ' \
+'--all[Show all users'\'' build records (default\: only current user)]' \
+'(--format --profile)-w[Refresh in real time (like watch, every 2 seconds)]' \
+'(--format --profile)--watch[Refresh in real time (like watch, every 2 seconds)]' \
+'--profile[Show a child build'\''s profile (the ID is a build ID in this mode; requires --task and cannot be used with --watch)]' \
+'--repair[Repair stale active build records (phase=building/pending but the process is dead)]' \
+'(--remote)--local[Force local operation, ignoring \`remote.default\` in the config]' \
+'(-q --quiet)-v[Verbose output (debug-level logging)]' \
+'(-q --quiet)--verbose[Verbose output (debug-level logging)]' \
+'(-v --verbose)-q[Quiet mode (warning and error only)]' \
+'(-v --verbose)--quiet[Quiet mode (warning and error only)]' \
+'--offline[Read product config from local disk instead of the hub]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'::task_pos -- Task ID (positional); use --task for the flag form:' \
+&& ret=0
+;;
+(gc)
+_arguments "${_arguments_options[@]}" \
+'-p+[Only clean up result directories for the specified product (requires --results or --policy)]:PRODUCT: ' \
+'--product=[Only clean up result directories for the specified product (requires --results or --policy)]:PRODUCT: ' \
+'--format=[Output format\: text (default) or json]:FORMAT:((text\:"Human-readable text (default)"
+json\:"Machine-readable JSON"))' \
+'-r[Also clean up expired result directory artifacts]' \
+'--results[Also clean up expired result directory artifacts]' \
+'-d[Preview what would be cleaned without deleting (requires --results, --orphan-mounts, --cache, or --policy)]' \
+'--dry-run[Preview what would be cleaned without deleting (requires --results, --orphan-mounts, --cache, or --policy)]' \
+'-o[Scan and clean orphan mounts for all products]' \
+'--orphan-mounts[Scan and clean orphan mounts for all products]' \
+'--cache[Clean package cache files not referenced by build_packages]' \
+'--all[Skip database reference check and delete all package cache (requires --cache)]' \
+'--policy[Execute configured GC policies (result count/retention + package_cache capacity)]' \
+'--yes[Skip the confirmation prompt (required for --all in non-interactive use)]' \
+'(-q --quiet)-v[Verbose output (debug-level logging)]' \
+'(-q --quiet)--verbose[Verbose output (debug-level logging)]' \
+'(-v --verbose)-q[Quiet mode (warning and error only)]' \
+'(-v --verbose)--quiet[Quiet mode (warning and error only)]' \
+'--offline[Read product config from local disk instead of the hub]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+&& ret=0
+;;
+(logs)
+_arguments "${_arguments_options[@]}" \
+'-a+[Sub-build architecture (required for multi-arch tasks to select the corresponding log)]:ARCH: ' \
+'--arch=[Sub-build architecture (required for multi-arch tasks to select the corresponding log)]:ARCH: ' \
+'-n+[Show the last N lines (default\: 50, 0 = all). No clap default so the handler can tell "user passed -n" apart from the fallback 50 (remote --follow rejects only an explicit -n)]:N: ' \
+'--lines=[Show the last N lines (default\: 50, 0 = all). No clap default so the handler can tell "user passed -n" apart from the fallback 50 (remote --follow rejects only an explicit -n)]:N: ' \
+'*-g+[Filter lines containing the specified string (repeatable, OR relationship)]:GREP: ' \
+'*--grep=[Filter lines containing the specified string (repeatable, OR relationship)]:GREP: ' \
+'--format=[Output format\: text (default) or json]:FORMAT:((text\:"Human-readable text (default)"
+json\:"Machine-readable JSON"))' \
+'--remote=[Operate against a remote crbs-server (URL or profile name from config). If the config sets \`remote.default\`, this option can be omitted to use the default remote]:URL|NAME: ' \
+'--token=[Remote server API token (defaults to CRBS_TOKEN or the profile token_env/token_file)]:TOKEN: ' \
+'(--format)-f[Follow log output in real time (like tail -f)]' \
+'(--format)--follow[Follow log output in real time (like tail -f)]' \
+'(--format)-e[Open the log in an editor read-only (\$CRBS_LOG_VIEWER > \$EDITOR > vim -R > vi -R)]' \
+'(--format)--editor[Open the log in an editor read-only (\$CRBS_LOG_VIEWER > \$EDITOR > vim -R > vi -R)]' \
+'(--remote)--local[Force local operation, ignoring \`remote.default\` in the config]' \
+'(-q --quiet)-v[Verbose output (debug-level logging)]' \
+'(-q --quiet)--verbose[Verbose output (debug-level logging)]' \
+'(-v --verbose)-q[Quiet mode (warning and error only)]' \
+'(-v --verbose)--quiet[Quiet mode (warning and error only)]' \
+'--offline[Read product config from local disk instead of the hub]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+':task -- Task ID (incremental integer; local and remote modes share task semantics):' \
+&& ret=0
+;;
+(cancel)
+_arguments "${_arguments_options[@]}" \
+'--format=[Output format\: text (default) or json]:FORMAT:((text\:"Human-readable text (default)"
+json\:"Machine-readable JSON"))' \
+'--remote=[Operate against a remote crbs-server (URL or profile name from config). If the config sets \`remote.default\`, this option can be omitted to use the default remote]:URL|NAME: ' \
+'--token=[Remote server API token (defaults to CRBS_TOKEN or the profile token_env/token_file)]:TOKEN: ' \
+'(--remote)--local[Force local operation, ignoring \`remote.default\` in the config]' \
+'(-q --quiet)-v[Verbose output (debug-level logging)]' \
+'(-q --quiet)--verbose[Verbose output (debug-level logging)]' \
+'(-v --verbose)-q[Quiet mode (warning and error only)]' \
+'(-v --verbose)--quiet[Quiet mode (warning and error only)]' \
+'--offline[Read product config from local disk instead of the hub]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+':task -- Task ID (incremental integer; local and remote modes share task semantics):' \
+&& ret=0
+;;
+(verify)
+_arguments "${_arguments_options[@]}" \
+'--format=[Output format\: text (default) or json]:FORMAT:((text\:"Human-readable text (default)"
+json\:"Machine-readable JSON"))' \
+'(-q --quiet)-v[Verbose output (debug-level logging)]' \
+'(-q --quiet)--verbose[Verbose output (debug-level logging)]' \
+'(-v --verbose)-q[Quiet mode (warning and error only)]' \
+'(-v --verbose)--quiet[Quiet mode (warning and error only)]' \
+'--offline[Read product config from local disk instead of the hub]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+':task_a -- First task ID:' \
+'::task_b -- Second task ID (omit to compare task_a'\''s own builds pairwise):' \
+&& ret=0
+;;
+(diff)
+_arguments "${_arguments_options[@]}" \
+'--format=[Output format\: text (default) or json]:FORMAT:((text\:"Human-readable text (default)"
+json\:"Machine-readable JSON"))' \
+'(-q --quiet)-v[Verbose output (debug-level logging)]' \
+'(-q --quiet)--verbose[Verbose output (debug-level logging)]' \
+'(-v --verbose)-q[Quiet mode (warning and error only)]' \
+'(-v --verbose)--quiet[Quiet mode (warning and error only)]' \
+'--offline[Read product config from local disk instead of the hub]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+':left -- Left build ID (execution domain):' \
+':right -- Right build ID (execution domain):' \
+&& ret=0
+;;
+(sign)
+_arguments "${_arguments_options[@]}" \
+'-k+[GPG key ID (defaults to the global config)]:ID: ' \
+'--key-id=[GPG key ID (defaults to the global config)]:ID: ' \
+'--gpg-home=[GPG home directory (defaults to the current user'\''s keyring)]:PATH: ' \
+'--remote=[Operate against a remote crbs-server (URL or profile name from config). If the config sets \`remote.default\`, this option can be omitted to use the default remote]:URL|NAME: ' \
+'--token=[Remote server API token (defaults to CRBS_TOKEN or the profile token_env/token_file)]:TOKEN: ' \
+'--ca-cert=[PEM CA cert used when talking to the hub (config source resolution). Falls back to profile \`ca_cert\` / \`CRBS_CA_CERT\` env]:PATH:_files' \
+'--format=[Output format\: text (default) or json]:FORMAT:((text\:"Human-readable text (default)"
+json\:"Machine-readable JSON"))' \
+'(--remote)--local[Force local operation, ignoring \`remote.default\` in the config]' \
+'(-q --quiet)-v[Verbose output (debug-level logging)]' \
+'(-q --quiet)--verbose[Verbose output (debug-level logging)]' \
+'(-v --verbose)-q[Quiet mode (warning and error only)]' \
+'(-v --verbose)--quiet[Quiet mode (warning and error only)]' \
+'--offline[Read product config from local disk instead of the hub]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+':task -- Task ID (incremental integer; local and remote modes share task semantics):' \
+&& ret=0
+;;
+(download)
+_arguments "${_arguments_options[@]}" \
+'-o+[Specify output directory (local mode\: copy target; remote mode\: download save path)]:PATH:_files' \
+'--output-dir=[Specify output directory (local mode\: copy target; remote mode\: download save path)]:PATH:_files' \
+'*--arches=[Only download child builds for these architectures, comma-separated or repeatable (e.g. x86_64,aarch64). Default\: download all architectures; arches not present in the task are silently ignored]:ARCH: ' \
+'*--arch=[Only download child builds for these architectures, comma-separated or repeatable (e.g. x86_64,aarch64). Default\: download all architectures; arches not present in the task are silently ignored]:ARCH: ' \
+'--remote=[Operate against a remote crbs-server (URL or profile name from config). If the config sets \`remote.default\`, this option can be omitted to use the default remote]:URL|NAME: ' \
+'--token=[Remote server API token (defaults to CRBS_TOKEN or the profile token_env/token_file)]:TOKEN: ' \
+'--format=[Output format\: text (default) or json]:FORMAT:((text\:"Human-readable text (default)"
+json\:"Machine-readable JSON"))' \
+'--src[Download the source RPM (default\: skip it)]' \
+'--debuginfo[Download debuginfo/debugsource/debug packages (default\: skip them)]' \
+'--logs[Download build logs (build.log and files under crbs-logs/); default\: skip them]' \
+'--force[Overwrite existing files in the output directory (default\: fail on conflict)]' \
+'(--remote)--local[Force local operation, ignoring \`remote.default\` in the config]' \
+'(-q --quiet)-v[Verbose output (debug-level logging)]' \
+'(-q --quiet)--verbose[Verbose output (debug-level logging)]' \
+'(-v --verbose)-q[Quiet mode (warning and error only)]' \
+'(-v --verbose)--quiet[Quiet mode (warning and error only)]' \
+'--offline[Read product config from local disk instead of the hub]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+':task -- Task ID (incremental integer; local and remote modes share task semantics):' \
+&& ret=0
+;;
+(builds)
+_arguments "${_arguments_options[@]}" \
+'--remote=[Operate against a remote crbs-server (URL or profile name from config). If the config sets \`remote.default\`, this option can be omitted to use the default remote]:URL|NAME: ' \
+'--token=[Remote server API token (defaults to CRBS_TOKEN or the profile token_env/token_file)]:TOKEN: ' \
+'(--remote)--local[Force local operation, ignoring \`remote.default\` in the config]' \
+'(-q --quiet)-v[Verbose output (debug-level logging)]' \
+'(-q --quiet)--verbose[Verbose output (debug-level logging)]' \
+'(-v --verbose)-q[Quiet mode (warning and error only)]' \
+'(-v --verbose)--quiet[Quiet mode (warning and error only)]' \
+'--offline[Read product config from local disk instead of the hub]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+":: :_crbs__builds_commands" \
+"*::: :->builds" \
+&& ret=0
+
+    case $state in
+    (builds)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:crbs-builds-command-$line[1]:"
+        case $line[1] in
+            (show)
+_arguments "${_arguments_options[@]}" \
+'--format=[Output format\: text (default) or json]:FORMAT:((text\:"Human-readable text (default)"
+json\:"Machine-readable JSON"))' \
+'(-q --quiet)-v[Verbose output (debug-level logging)]' \
+'(-q --quiet)--verbose[Verbose output (debug-level logging)]' \
+'(-v --verbose)-q[Quiet mode (warning and error only)]' \
+'(-v --verbose)--quiet[Quiet mode (warning and error only)]' \
+'--offline[Read product config from local disk instead of the hub]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+':id -- Build ID:' \
+&& ret=0
+;;
+(publish)
+_arguments "${_arguments_options[@]}" \
+'--format=[Output format\: text (default) or json]:FORMAT:((text\:"Human-readable text (default)"
+json\:"Machine-readable JSON"))' \
+'(-q --quiet)-v[Verbose output (debug-level logging)]' \
+'(-q --quiet)--verbose[Verbose output (debug-level logging)]' \
+'(-v --verbose)-q[Quiet mode (warning and error only)]' \
+'(-v --verbose)--quiet[Quiet mode (warning and error only)]' \
+'--offline[Read product config from local disk instead of the hub]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+':id -- Build ID:' \
+&& ret=0
+;;
+(unpublish)
+_arguments "${_arguments_options[@]}" \
+'--format=[Output format\: text (default) or json]:FORMAT:((text\:"Human-readable text (default)"
+json\:"Machine-readable JSON"))' \
+'(-q --quiet)-v[Verbose output (debug-level logging)]' \
+'(-q --quiet)--verbose[Verbose output (debug-level logging)]' \
+'(-v --verbose)-q[Quiet mode (warning and error only)]' \
+'(-v --verbose)--quiet[Quiet mode (warning and error only)]' \
+'--offline[Read product config from local disk instead of the hub]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+':id -- Build ID:' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" \
+":: :_crbs__builds__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:crbs-builds-help-command-$line[1]:"
+        case $line[1] in
+            (show)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(publish)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(unpublish)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(rebuild)
+_arguments "${_arguments_options[@]}" \
+'--remote=[Remote crbs-server address or configured profile name. If the config sets \`remote.default\`, this option can be omitted to use the default remote]:URL|NAME: ' \
+'--token=[Remote server API token (Bearer). Defaults to profile token/token_env/token_file → CRBS_TOKEN env var]:TOKEN: ' \
+'(--remote)--local[Rebuild orchestration runs on the hub; there is no local form （--local 仅用于抑制 remote.default 误解析后给出明确报错）。]' \
+'(-q --quiet)-v[Verbose output (debug-level logging)]' \
+'(-q --quiet)--verbose[Verbose output (debug-level logging)]' \
+'(-v --verbose)-q[Quiet mode (warning and error only)]' \
+'(-v --verbose)--quiet[Quiet mode (warning and error only)]' \
+'--offline[Read product config from local disk instead of the hub]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+":: :_crbs__rebuild_commands" \
+"*::: :->rebuild" \
+&& ret=0
+
+    case $state in
+    (rebuild)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:crbs-rebuild-command-$line[1]:"
+        case $line[1] in
+            (submit)
+_arguments "${_arguments_options[@]}" \
+'-p+[Product name]:PRODUCT: ' \
+'--product=[Product name]:PRODUCT: ' \
+'--repo=[Source repository URL (http/https/file) holding the SRPMs to rebuild; must point at a repository level whose directory contains a repodata/ directory (e.g. the SRPMS sub-repo of the published product repo)]:URL: ' \
+'--dist=[Set the %dist macro for the rebuilt packages (e.g. .el9)]:TAG: ' \
+'*--arch=[Target architectures, comma-separated or repeatable (default\: product arches)]:ARCH: ' \
+'--on-failure=[Batch behavior when a package fails (default\: continue)]:ON_FAILURE:(continue abort)' \
+'--format=[Output format\: text (default) or json]:FORMAT:((text\:"Human-readable text (default)"
+json\:"Machine-readable JSON"))' \
+'--remote=[Remote crbs-server address or configured profile name. If the config sets \`remote.default\`, this option can be omitted to use the default remote]:URL|NAME: ' \
+'--token=[Remote server API token (Bearer). Defaults to profile token/token_env/token_file → CRBS_TOKEN env var]:TOKEN: ' \
+'--force[Ignore the incremental cache and rebuild every package]' \
+'--allow-dist-mismatch[Explicitly allow a dist mismatch with the source repo tag (fail-closed otherwise)]' \
+'--dry-run[Preview the incremental plan (enumerate + skip decision) without creating a batch or downloading anything]' \
+'(--remote)--local[Rebuild orchestration runs on the hub; there is no local form （--local 仅用于抑制 remote.default 误解析后给出明确报错）。]' \
+'(-q --quiet)-v[Verbose output (debug-level logging)]' \
+'(-q --quiet)--verbose[Verbose output (debug-level logging)]' \
+'(-v --verbose)-q[Quiet mode (warning and error only)]' \
+'(-v --verbose)--quiet[Quiet mode (warning and error only)]' \
+'--offline[Read product config from local disk instead of the hub]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+&& ret=0
+;;
+(status)
+_arguments "${_arguments_options[@]}" \
+'--id=[Batch ID]:ID: ' \
+'--format=[Output format\: text (default) or json (mutually exclusive with --follow)]:FORMAT:((text\:"Human-readable text (default)"
+json\:"Machine-readable JSON"))' \
+'--remote=[Remote crbs-server address or configured profile name. If the config sets \`remote.default\`, this option can be omitted to use the default remote]:URL|NAME: ' \
+'--token=[Remote server API token (Bearer). Defaults to profile token/token_env/token_file → CRBS_TOKEN env var]:TOKEN: ' \
+'(--id)--latest[Operate on the most recent batch (mutually exclusive with --id)]' \
+'-f[Refresh every 5s until the batch reaches a terminal status]' \
+'--follow[Refresh every 5s until the batch reaches a terminal status]' \
+'(--remote)--local[Rebuild orchestration runs on the hub; there is no local form （--local 仅用于抑制 remote.default 误解析后给出明确报错）。]' \
+'(-q --quiet)-v[Verbose output (debug-level logging)]' \
+'(-q --quiet)--verbose[Verbose output (debug-level logging)]' \
+'(-v --verbose)-q[Quiet mode (warning and error only)]' \
+'(-v --verbose)--quiet[Quiet mode (warning and error only)]' \
+'--offline[Read product config from local disk instead of the hub]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+&& ret=0
+;;
+(cancel)
+_arguments "${_arguments_options[@]}" \
+'--id=[Batch ID]:ID: ' \
+'--format=[Output format\: text (default) or json]:FORMAT:((text\:"Human-readable text (default)"
+json\:"Machine-readable JSON"))' \
+'--remote=[Remote crbs-server address or configured profile name. If the config sets \`remote.default\`, this option can be omitted to use the default remote]:URL|NAME: ' \
+'--token=[Remote server API token (Bearer). Defaults to profile token/token_env/token_file → CRBS_TOKEN env var]:TOKEN: ' \
+'(--remote)--local[Rebuild orchestration runs on the hub; there is no local form （--local 仅用于抑制 remote.default 误解析后给出明确报错）。]' \
+'(-q --quiet)-v[Verbose output (debug-level logging)]' \
+'(-q --quiet)--verbose[Verbose output (debug-level logging)]' \
+'(-v --verbose)-q[Quiet mode (warning and error only)]' \
+'(-v --verbose)--quiet[Quiet mode (warning and error only)]' \
+'--offline[Read product config from local disk instead of the hub]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" \
+":: :_crbs__rebuild__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:crbs-rebuild-help-command-$line[1]:"
+        case $line[1] in
+            (submit)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(status)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(cancel)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(products)
+_arguments "${_arguments_options[@]}" \
+'--remote=[Remote crbs-server address or configured profile name. If the config sets \`remote.default\`, this option can be omitted to use the default remote]:URL|NAME: ' \
+'--token=[Remote server API token (Bearer). Defaults to profile token/token_env/token_file → CRBS_TOKEN]:TOKEN: ' \
+'--format=[Output format\: text (default) or json]:FORMAT:((text\:"Human-readable text (default)"
+json\:"Machine-readable JSON"))' \
+'(--remote)--local[Force local product query, ignoring \`remote.default\` in the config]' \
+'(-q --quiet)-v[Verbose output (debug-level logging)]' \
+'(-q --quiet)--verbose[Verbose output (debug-level logging)]' \
+'(-v --verbose)-q[Quiet mode (warning and error only)]' \
+'(-v --verbose)--quiet[Quiet mode (warning and error only)]' \
+'--offline[Read product config from local disk instead of the hub]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+":: :_crbs__products_commands" \
+"*::: :->products" \
+&& ret=0
+
+    case $state in
+    (products)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:crbs-products-command-$line[1]:"
+        case $line[1] in
+            (show)
+_arguments "${_arguments_options[@]}" \
+'--remote=[Remote crbs-server address or configured profile name. If the config sets \`remote.default\`, this option can be omitted to use the default remote]:URL|NAME: ' \
+'--token=[Remote server API token (Bearer). Defaults to profile token/token_env/token_file → CRBS_TOKEN]:TOKEN: ' \
+'--format=[Output format\: text (default) or json]:FORMAT:((text\:"Human-readable text (default)"
+json\:"Machine-readable JSON"))' \
+'(--remote)--local[Force local product query, ignoring \`remote.default\` in the config]' \
+'(-q --quiet)-v[Verbose output (debug-level logging)]' \
+'(-q --quiet)--verbose[Verbose output (debug-level logging)]' \
+'(-v --verbose)-q[Quiet mode (warning and error only)]' \
+'(-v --verbose)--quiet[Quiet mode (warning and error only)]' \
+'--offline[Read product config from local disk instead of the hub]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+':product -- Product name:' \
+&& ret=0
+;;
+(create)
+_arguments "${_arguments_options[@]}" \
+'--config-file=[Path to a TOML file describing the product configuration]:PATH:_files' \
+'--display-name=[Optional display name]:DISPLAY_NAME: ' \
+'--parent-id=[Optional parent product id (for future inheritance)]:PARENT_ID: ' \
+'--reason=[Optional audit reason recorded to product_config_history]:REASON: ' \
+'--remote=[Remote crbs-server address or configured profile name. If the config sets \`remote.default\`, this option can be omitted to use the default remote]:URL|NAME: ' \
+'--token=[Remote server API token (Bearer). Defaults to profile token/token_env/token_file → CRBS_TOKEN]:TOKEN: ' \
+'--format=[Output format\: text (default) or json]:FORMAT:((text\:"Human-readable text (default)"
+json\:"Machine-readable JSON"))' \
+'(--remote)--local[Force local product query, ignoring \`remote.default\` in the config]' \
+'(-q --quiet)-v[Verbose output (debug-level logging)]' \
+'(-q --quiet)--verbose[Verbose output (debug-level logging)]' \
+'(-v --verbose)-q[Quiet mode (warning and error only)]' \
+'(-v --verbose)--quiet[Quiet mode (warning and error only)]' \
+'--offline[Read product config from local disk instead of the hub]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+':product -- Product name (must be unique among official products):' \
+&& ret=0
+;;
+(update)
+_arguments "${_arguments_options[@]}" \
+'--config-file=[Path to the new TOML config]:PATH:_files' \
+'--expected-revision=[The revision the caller believes is current (required; server returns 409 on mismatch)]:EXPECTED_REVISION: ' \
+'--reason=[Optional audit reason]:REASON: ' \
+'(--detach-parent)--parent-id=[re-parent this product to the given parent product id]:ID: ' \
+'--remote=[Remote crbs-server address or configured profile name. If the config sets \`remote.default\`, this option can be omitted to use the default remote]:URL|NAME: ' \
+'--token=[Remote server API token (Bearer). Defaults to profile token/token_env/token_file → CRBS_TOKEN]:TOKEN: ' \
+'--format=[Output format\: text (default) or json]:FORMAT:((text\:"Human-readable text (default)"
+json\:"Machine-readable JSON"))' \
+'(--parent-id)--detach-parent[detach this product from its parent (become root)]' \
+'(--remote)--local[Force local product query, ignoring \`remote.default\` in the config]' \
+'(-q --quiet)-v[Verbose output (debug-level logging)]' \
+'(-q --quiet)--verbose[Verbose output (debug-level logging)]' \
+'(-v --verbose)-q[Quiet mode (warning and error only)]' \
+'(-v --verbose)--quiet[Quiet mode (warning and error only)]' \
+'--offline[Read product config from local disk instead of the hub]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+':product -- Product name:' \
+&& ret=0
+;;
+(fork)
+_arguments "${_arguments_options[@]}" \
+'--display-name=[Optional display name for the new product]:DISPLAY_NAME: ' \
+'--reason=[Optional audit reason recorded to product_config_history]:REASON: ' \
+'--remote=[Remote crbs-server address or configured profile name. If the config sets \`remote.default\`, this option can be omitted to use the default remote]:URL|NAME: ' \
+'--token=[Remote server API token (Bearer). Defaults to profile token/token_env/token_file → CRBS_TOKEN]:TOKEN: ' \
+'--format=[Output format\: text (default) or json]:FORMAT:((text\:"Human-readable text (default)"
+json\:"Machine-readable JSON"))' \
+'--detached[Snapshot parent'\''s resolved config and set parent_id=NULL (root)]' \
+'(--remote)--local[Force local product query, ignoring \`remote.default\` in the config]' \
+'(-q --quiet)-v[Verbose output (debug-level logging)]' \
+'(-q --quiet)--verbose[Verbose output (debug-level logging)]' \
+'(-v --verbose)-q[Quiet mode (warning and error only)]' \
+'(-v --verbose)--quiet[Quiet mode (warning and error only)]' \
+'--offline[Read product config from local disk instead of the hub]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+':parent -- Parent product to fork from (source):' \
+':new_name -- Name of the new product to create:' \
+&& ret=0
+;;
+(delete)
+_arguments "${_arguments_options[@]}" \
+'--remote=[Remote crbs-server address or configured profile name. If the config sets \`remote.default\`, this option can be omitted to use the default remote]:URL|NAME: ' \
+'--token=[Remote server API token (Bearer). Defaults to profile token/token_env/token_file → CRBS_TOKEN]:TOKEN: ' \
+'--format=[Output format\: text (default) or json]:FORMAT:((text\:"Human-readable text (default)"
+json\:"Machine-readable JSON"))' \
+'--yes[Skip the interactive confirmation prompt]' \
+'(--remote)--local[Force local product query, ignoring \`remote.default\` in the config]' \
+'(-q --quiet)-v[Verbose output (debug-level logging)]' \
+'(-q --quiet)--verbose[Verbose output (debug-level logging)]' \
+'(-v --verbose)-q[Quiet mode (warning and error only)]' \
+'(-v --verbose)--quiet[Quiet mode (warning and error only)]' \
+'--offline[Read product config from local disk instead of the hub]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+':product -- Product name:' \
+&& ret=0
+;;
+(clean)
+_arguments "${_arguments_options[@]}" \
+'--remote=[Remote crbs-server address or configured profile name. If the config sets \`remote.default\`, this option can be omitted to use the default remote]:URL|NAME: ' \
+'--token=[Remote server API token (Bearer). Defaults to profile token/token_env/token_file → CRBS_TOKEN]:TOKEN: ' \
+'--format=[Output format\: text (default) or json]:FORMAT:((text\:"Human-readable text (default)"
+json\:"Machine-readable JSON"))' \
+'--yes[Skip the interactive confirmation prompt]' \
+'(--remote)--local[Force local product query, ignoring \`remote.default\` in the config]' \
+'(-q --quiet)-v[Verbose output (debug-level logging)]' \
+'(-q --quiet)--verbose[Verbose output (debug-level logging)]' \
+'(-v --verbose)-q[Quiet mode (warning and error only)]' \
+'(-v --verbose)--quiet[Quiet mode (warning and error only)]' \
+'--offline[Read product config from local disk instead of the hub]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+':product -- Product name:' \
+&& ret=0
+;;
+(history)
+_arguments "${_arguments_options[@]}" \
+'--revision=[Return a specific revision instead of the full list]:REVISION: ' \
+'--remote=[Remote crbs-server address or configured profile name. If the config sets \`remote.default\`, this option can be omitted to use the default remote]:URL|NAME: ' \
+'--token=[Remote server API token (Bearer). Defaults to profile token/token_env/token_file → CRBS_TOKEN]:TOKEN: ' \
+'--format=[Output format\: text (default) or json]:FORMAT:((text\:"Human-readable text (default)"
+json\:"Machine-readable JSON"))' \
+'(--remote)--local[Force local product query, ignoring \`remote.default\` in the config]' \
+'(-q --quiet)-v[Verbose output (debug-level logging)]' \
+'(-q --quiet)--verbose[Verbose output (debug-level logging)]' \
+'(-v --verbose)-q[Quiet mode (warning and error only)]' \
+'(-v --verbose)--quiet[Quiet mode (warning and error only)]' \
+'--offline[Read product config from local disk instead of the hub]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+':product -- Product name:' \
+&& ret=0
+;;
+(export)
+_arguments "${_arguments_options[@]}" \
+'--file=[Write TOML to this path instead of stdout]:PATH:_files' \
+'--remote=[Remote crbs-server address or configured profile name. If the config sets \`remote.default\`, this option can be omitted to use the default remote]:URL|NAME: ' \
+'--token=[Remote server API token (Bearer). Defaults to profile token/token_env/token_file → CRBS_TOKEN]:TOKEN: ' \
+'--format=[Output format\: text (default) or json]:FORMAT:((text\:"Human-readable text (default)"
+json\:"Machine-readable JSON"))' \
+'(--remote)--local[Force local product query, ignoring \`remote.default\` in the config]' \
+'(-q --quiet)-v[Verbose output (debug-level logging)]' \
+'(-q --quiet)--verbose[Verbose output (debug-level logging)]' \
+'(-v --verbose)-q[Quiet mode (warning and error only)]' \
+'(-v --verbose)--quiet[Quiet mode (warning and error only)]' \
+'--offline[Read product config from local disk instead of the hub]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+':product -- Product name:' \
+&& ret=0
+;;
+(publish)
+_arguments "${_arguments_options[@]}" \
+'--reason=[Optional audit reason recorded to product_config_history]:REASON: ' \
+'--remote=[Remote crbs-server address or configured profile name. If the config sets \`remote.default\`, this option can be omitted to use the default remote]:URL|NAME: ' \
+'--token=[Remote server API token (Bearer). Defaults to profile token/token_env/token_file → CRBS_TOKEN]:TOKEN: ' \
+'--format=[Output format\: text (default) or json]:FORMAT:((text\:"Human-readable text (default)"
+json\:"Machine-readable JSON"))' \
+'(--remote)--local[Force local product query, ignoring \`remote.default\` in the config]' \
+'(-q --quiet)-v[Verbose output (debug-level logging)]' \
+'(-q --quiet)--verbose[Verbose output (debug-level logging)]' \
+'(-v --verbose)-q[Quiet mode (warning and error only)]' \
+'(-v --verbose)--quiet[Quiet mode (warning and error only)]' \
+'--offline[Read product config from local disk instead of the hub]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+':product -- Product name:' \
+&& ret=0
+;;
+(unpublish)
+_arguments "${_arguments_options[@]}" \
+'--reason=[Optional audit reason recorded to product_config_history]:REASON: ' \
+'--remote=[Remote crbs-server address or configured profile name. If the config sets \`remote.default\`, this option can be omitted to use the default remote]:URL|NAME: ' \
+'--token=[Remote server API token (Bearer). Defaults to profile token/token_env/token_file → CRBS_TOKEN]:TOKEN: ' \
+'--format=[Output format\: text (default) or json]:FORMAT:((text\:"Human-readable text (default)"
+json\:"Machine-readable JSON"))' \
+'(--remote)--local[Force local product query, ignoring \`remote.default\` in the config]' \
+'(-q --quiet)-v[Verbose output (debug-level logging)]' \
+'(-q --quiet)--verbose[Verbose output (debug-level logging)]' \
+'(-v --verbose)-q[Quiet mode (warning and error only)]' \
+'(-v --verbose)--quiet[Quiet mode (warning and error only)]' \
+'--offline[Read product config from local disk instead of the hub]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+':product -- Product name:' \
+&& ret=0
+;;
+(transfer)
+_arguments "${_arguments_options[@]}" \
+'--reason=[Optional audit reason recorded to product_config_history]:REASON: ' \
+'--remote=[Remote crbs-server address or configured profile name. If the config sets \`remote.default\`, this option can be omitted to use the default remote]:URL|NAME: ' \
+'--token=[Remote server API token (Bearer). Defaults to profile token/token_env/token_file → CRBS_TOKEN]:TOKEN: ' \
+'--format=[Output format\: text (default) or json]:FORMAT:((text\:"Human-readable text (default)"
+json\:"Machine-readable JSON"))' \
+'(--remote)--local[Force local product query, ignoring \`remote.default\` in the config]' \
+'(-q --quiet)-v[Verbose output (debug-level logging)]' \
+'(-q --quiet)--verbose[Verbose output (debug-level logging)]' \
+'(-v --verbose)-q[Quiet mode (warning and error only)]' \
+'(-v --verbose)--quiet[Quiet mode (warning and error only)]' \
+'--offline[Read product config from local disk instead of the hub]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+':product -- Product name:' \
+':new_owner -- Username of the new owner:' \
+&& ret=0
+;;
+(acl)
+_arguments "${_arguments_options[@]}" \
+'--remote=[Remote crbs-server address or configured profile name. If the config sets \`remote.default\`, this option can be omitted to use the default remote]:URL|NAME: ' \
+'--token=[Remote server API token (Bearer). Defaults to profile token/token_env/token_file → CRBS_TOKEN]:TOKEN: ' \
+'--format=[Output format\: text (default) or json]:FORMAT:((text\:"Human-readable text (default)"
+json\:"Machine-readable JSON"))' \
+'(--remote)--local[Force local product query, ignoring \`remote.default\` in the config]' \
+'(-q --quiet)-v[Verbose output (debug-level logging)]' \
+'(-q --quiet)--verbose[Verbose output (debug-level logging)]' \
+'(-v --verbose)-q[Quiet mode (warning and error only)]' \
+'(-v --verbose)--quiet[Quiet mode (warning and error only)]' \
+'--offline[Read product config from local disk instead of the hub]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+":: :_crbs__products__acl_commands" \
+"*::: :->acl" \
+&& ret=0
+
+    case $state in
+    (acl)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:crbs-products-acl-command-$line[1]:"
+        case $line[1] in
+            (list)
+_arguments "${_arguments_options[@]}" \
+'--remote=[Remote crbs-server address or configured profile name. If the config sets \`remote.default\`, this option can be omitted to use the default remote]:URL|NAME: ' \
+'--token=[Remote server API token (Bearer). Defaults to profile token/token_env/token_file → CRBS_TOKEN]:TOKEN: ' \
+'--format=[Output format\: text (default) or json]:FORMAT:((text\:"Human-readable text (default)"
+json\:"Machine-readable JSON"))' \
+'(--remote)--local[Force local product query, ignoring \`remote.default\` in the config]' \
+'(-q --quiet)-v[Verbose output (debug-level logging)]' \
+'(-q --quiet)--verbose[Verbose output (debug-level logging)]' \
+'(-v --verbose)-q[Quiet mode (warning and error only)]' \
+'(-v --verbose)--quiet[Quiet mode (warning and error only)]' \
+'--offline[Read product config from local disk instead of the hub]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+':product -- Product slug:' \
+&& ret=0
+;;
+(grant)
+_arguments "${_arguments_options[@]}" \
+'--role=[Role to grant]:ROLE:(viewer builder admin)' \
+'--remote=[Remote crbs-server address or configured profile name. If the config sets \`remote.default\`, this option can be omitted to use the default remote]:URL|NAME: ' \
+'--token=[Remote server API token (Bearer). Defaults to profile token/token_env/token_file → CRBS_TOKEN]:TOKEN: ' \
+'--format=[Output format\: text (default) or json]:FORMAT:((text\:"Human-readable text (default)"
+json\:"Machine-readable JSON"))' \
+'(--remote)--local[Force local product query, ignoring \`remote.default\` in the config]' \
+'(-q --quiet)-v[Verbose output (debug-level logging)]' \
+'(-q --quiet)--verbose[Verbose output (debug-level logging)]' \
+'(-v --verbose)-q[Quiet mode (warning and error only)]' \
+'(-v --verbose)--quiet[Quiet mode (warning and error only)]' \
+'--offline[Read product config from local disk instead of the hub]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+':product -- Product slug:' \
+':username -- Username to grant access to:' \
+&& ret=0
+;;
+(revoke)
+_arguments "${_arguments_options[@]}" \
+'--remote=[Remote crbs-server address or configured profile name. If the config sets \`remote.default\`, this option can be omitted to use the default remote]:URL|NAME: ' \
+'--token=[Remote server API token (Bearer). Defaults to profile token/token_env/token_file → CRBS_TOKEN]:TOKEN: ' \
+'--format=[Output format\: text (default) or json]:FORMAT:((text\:"Human-readable text (default)"
+json\:"Machine-readable JSON"))' \
+'(--remote)--local[Force local product query, ignoring \`remote.default\` in the config]' \
+'(-q --quiet)-v[Verbose output (debug-level logging)]' \
+'(-q --quiet)--verbose[Verbose output (debug-level logging)]' \
+'(-v --verbose)-q[Quiet mode (warning and error only)]' \
+'(-v --verbose)--quiet[Quiet mode (warning and error only)]' \
+'--offline[Read product config from local disk instead of the hub]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+':product -- Product slug:' \
+':username -- Username to revoke access from:' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" \
+":: :_crbs__products__acl__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:crbs-products-acl-help-command-$line[1]:"
+        case $line[1] in
+            (list)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(grant)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(revoke)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(help)
+_arguments "${_arguments_options[@]}" \
+":: :_crbs__products__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:crbs-products-help-command-$line[1]:"
+        case $line[1] in
+            (show)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(create)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(update)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(fork)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(delete)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(clean)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(history)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(export)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(publish)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(unpublish)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(transfer)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(acl)
+_arguments "${_arguments_options[@]}" \
+":: :_crbs__products__help__acl_commands" \
+"*::: :->acl" \
+&& ret=0
+
+    case $state in
+    (acl)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:crbs-products-help-acl-command-$line[1]:"
+        case $line[1] in
+            (list)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(grant)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(revoke)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(help)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(nihao)
+_arguments "${_arguments_options[@]}" \
+'--remote=[Remote crbs-server address or configured profile name. If the config sets \`remote.default\`, this option can be omitted to use the default remote]:URL|NAME: ' \
+'--token=[Remote server API token (Bearer). Defaults to profile token/token_env/token_file → CRBS_TOKEN env var]:TOKEN: ' \
+'--ca-cert=[Remote server CA certificate path (self-signed/internal CA scenarios)]:PATH:_files' \
+'--format=[Output format\: text (default) or json]:FORMAT:((text\:"Human-readable text (default)"
+json\:"Machine-readable JSON"))' \
+'(--remote)--daemon[Connect via the local crbs-server daemon]' \
+'(-q --quiet)-v[Verbose output (debug-level logging)]' \
+'(-q --quiet)--verbose[Verbose output (debug-level logging)]' \
+'(-v --verbose)-q[Quiet mode (warning and error only)]' \
+'(-v --verbose)--quiet[Quiet mode (warning and error only)]' \
+'--offline[Read product config from local disk instead of the hub]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+&& ret=0
+;;
+(ping)
+_arguments "${_arguments_options[@]}" \
+'--remote=[Remote crbs-server address or configured profile name. If the config sets \`remote.default\`, this option can be omitted to use the default remote]:URL|NAME: ' \
+'--token=[Remote server API token (Bearer). Defaults to profile token/token_env/token_file → CRBS_TOKEN env var]:TOKEN: ' \
+'--ca-cert=[Remote server CA certificate path (self-signed/internal CA scenarios)]:PATH:_files' \
+'--format=[Output format\: text (default) or json]:FORMAT:((text\:"Human-readable text (default)"
+json\:"Machine-readable JSON"))' \
+'(--remote)--daemon[Connect via the local crbs-server daemon]' \
+'(-q --quiet)-v[Verbose output (debug-level logging)]' \
+'(-q --quiet)--verbose[Verbose output (debug-level logging)]' \
+'(-v --verbose)-q[Quiet mode (warning and error only)]' \
+'(-v --verbose)--quiet[Quiet mode (warning and error only)]' \
+'--offline[Read product config from local disk instead of the hub]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+&& ret=0
+;;
+(whoami)
+_arguments "${_arguments_options[@]}" \
+'--remote=[Remote crbs-server address or configured profile name. If the config sets \`remote.default\`, this option can be omitted to use the default remote]:URL|NAME: ' \
+'--token=[Remote server API token (Bearer). Defaults to profile token/token_env/token_file → CRBS_TOKEN env var]:TOKEN: ' \
+'--ca-cert=[Remote server CA certificate path (self-signed/internal CA scenarios)]:PATH:_files' \
+'--format=[Output format\: text (default) or json]:FORMAT:((text\:"Human-readable text (default)"
+json\:"Machine-readable JSON"))' \
+'(--remote)--daemon[Connect via the local crbs-server daemon]' \
+'(-q --quiet)-v[Verbose output (debug-level logging)]' \
+'(-q --quiet)--verbose[Verbose output (debug-level logging)]' \
+'(-v --verbose)-q[Quiet mode (warning and error only)]' \
+'(-v --verbose)--quiet[Quiet mode (warning and error only)]' \
+'--offline[Read product config from local disk instead of the hub]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+&& ret=0
+;;
+(admin)
+_arguments "${_arguments_options[@]}" \
+'(-q --quiet)-v[Verbose output (debug-level logging)]' \
+'(-q --quiet)--verbose[Verbose output (debug-level logging)]' \
+'(-v --verbose)-q[Quiet mode (warning and error only)]' \
+'(-v --verbose)--quiet[Quiet mode (warning and error only)]' \
+'--offline[Read product config from local disk instead of the hub]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+":: :_crbs__admin_commands" \
+"*::: :->admin" \
+&& ret=0
+
+    case $state in
+    (admin)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:crbs-admin-command-$line[1]:"
+        case $line[1] in
+            (init)
+_arguments "${_arguments_options[@]}" \
+'*-w+[Target worker ID; repeatable (\`-w 1 -w 2\`). Mutually exclusive with \`--all\`]:WORKER: ' \
+'*--worker=[Target worker ID; repeatable (\`-w 1 -w 2\`). Mutually exclusive with \`--all\`]:WORKER: ' \
+'--remote=[Remote crbs-server address or configured profile name. If the config sets \`remote.default\`, this option can be omitted to use the default remote]:URL|NAME: ' \
+'--token=[Remote server API token (Bearer). Defaults to profile token/token_env/token_file -> CRBS_TOKEN env var]:TOKEN: ' \
+'--ca-cert=[Remote server CA certificate path (self-signed/internal CA scenarios)]:PATH:_files' \
+'--format=[Output format\: text (default) or json]:FORMAT:((text\:"Human-readable text (default)"
+json\:"Machine-readable JSON"))' \
+'(-w --worker)--all[Dispatch init to every currently online worker]' \
+'-y[Skip interactive confirmation]' \
+'--yes[Skip interactive confirmation]' \
+'(-q --quiet)-v[Verbose output (debug-level logging)]' \
+'(-q --quiet)--verbose[Verbose output (debug-level logging)]' \
+'(-v --verbose)-q[Quiet mode (warning and error only)]' \
+'(-v --verbose)--quiet[Quiet mode (warning and error only)]' \
+'--offline[Read product config from local disk instead of the hub]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+':product -- Product name:' \
+&& ret=0
+;;
+(rebuild-repo)
+_arguments "${_arguments_options[@]}" \
+'--remote=[Remote crbs-server address or configured profile name. If the config sets \`remote.default\`, this option can be omitted to use the default remote]:URL|NAME: ' \
+'--token=[Remote server API token (Bearer). Defaults to profile token/token_env/token_file -> CRBS_TOKEN env var]:TOKEN: ' \
+'--ca-cert=[Remote server CA certificate path (self-signed/internal CA scenarios)]:PATH:_files' \
+'--format=[Output format\: text (default) or json]:FORMAT:((text\:"Human-readable text (default)"
+json\:"Machine-readable JSON"))' \
+'(-q --quiet)-v[Verbose output (debug-level logging)]' \
+'(-q --quiet)--verbose[Verbose output (debug-level logging)]' \
+'(-v --verbose)-q[Quiet mode (warning and error only)]' \
+'(-v --verbose)--quiet[Quiet mode (warning and error only)]' \
+'--offline[Read product config from local disk instead of the hub]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+':product -- Product name whose published repo will be reconciled and rebuilt:' \
+&& ret=0
+;;
+(resource-profile)
+_arguments "${_arguments_options[@]}" \
+'(-q --quiet)-v[Verbose output (debug-level logging)]' \
+'(-q --quiet)--verbose[Verbose output (debug-level logging)]' \
+'(-v --verbose)-q[Quiet mode (warning and error only)]' \
+'(-v --verbose)--quiet[Quiet mode (warning and error only)]' \
+'--offline[Read product config from local disk instead of the hub]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+":: :_crbs__admin__resource-profile_commands" \
+"*::: :->resource-profile" \
+&& ret=0
+
+    case $state in
+    (resource-profile)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:crbs-admin-resource-profile-command-$line[1]:"
+        case $line[1] in
+            (list)
+_arguments "${_arguments_options[@]}" \
+'--product=[Product name]:PRODUCT: ' \
+'--remote=[Remote crbs-server address or configured profile name. If the config sets \`remote.default\`, this option can be omitted to use the default remote]:URL|NAME: ' \
+'--token=[Remote server API token (Bearer). Defaults to profile token/token_env/token_file -> CRBS_TOKEN env var]:TOKEN: ' \
+'--ca-cert=[Remote server CA certificate path (self-signed/internal CA scenarios)]:PATH:_files' \
+'--format=[Output format\: text (default) or json]:FORMAT:((text\:"Human-readable text (default)"
+json\:"Machine-readable JSON"))' \
+'(-q --quiet)-v[Verbose output (debug-level logging)]' \
+'(-q --quiet)--verbose[Verbose output (debug-level logging)]' \
+'(-v --verbose)-q[Quiet mode (warning and error only)]' \
+'(-v --verbose)--quiet[Quiet mode (warning and error only)]' \
+'--offline[Read product config from local disk instead of the hub]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+&& ret=0
+;;
+(set)
+_arguments "${_arguments_options[@]}" \
+'--min-mem=[Minimum memory floor, e.g. '\''4G'\'' / '\''512M'\'' (K/M/G/T 1024-based, bare digits = KB)]:SIZE: ' \
+'--min-ncpu=[Minimum CPU cores floor (1..=1024)]:N: ' \
+'--min-disk=[Minimum disk floor, e.g. '\''64G'\'' (K/M/G/T 1024-based, bare digits = KB)]:SIZE: ' \
+'--remote=[Remote crbs-server address or configured profile name. If the config sets \`remote.default\`, this option can be omitted to use the default remote]:URL|NAME: ' \
+'--token=[Remote server API token (Bearer). Defaults to profile token/token_env/token_file -> CRBS_TOKEN env var]:TOKEN: ' \
+'--ca-cert=[Remote server CA certificate path (self-signed/internal CA scenarios)]:PATH:_files' \
+'--format=[Output format\: text (default) or json]:FORMAT:((text\:"Human-readable text (default)"
+json\:"Machine-readable JSON"))' \
+'(-q --quiet)-v[Verbose output (debug-level logging)]' \
+'(-q --quiet)--verbose[Verbose output (debug-level logging)]' \
+'(-v --verbose)-q[Quiet mode (warning and error only)]' \
+'(-v --verbose)--quiet[Quiet mode (warning and error only)]' \
+'--offline[Read product config from local disk instead of the hub]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+':product -- Product name:' \
+':source -- Source package base name (builds.name, without version/release):' \
+':arch -- Architecture ('\''x86_64'\'' / '\''noarch'\'', or '\''any'\'' for arch-independent):' \
+&& ret=0
+;;
+(unset)
+_arguments "${_arguments_options[@]}" \
+'--remote=[Remote crbs-server address or configured profile name. If the config sets \`remote.default\`, this option can be omitted to use the default remote]:URL|NAME: ' \
+'--token=[Remote server API token (Bearer). Defaults to profile token/token_env/token_file -> CRBS_TOKEN env var]:TOKEN: ' \
+'--ca-cert=[Remote server CA certificate path (self-signed/internal CA scenarios)]:PATH:_files' \
+'--format=[Output format\: text (default) or json]:FORMAT:((text\:"Human-readable text (default)"
+json\:"Machine-readable JSON"))' \
+'(-q --quiet)-v[Verbose output (debug-level logging)]' \
+'(-q --quiet)--verbose[Verbose output (debug-level logging)]' \
+'(-v --verbose)-q[Quiet mode (warning and error only)]' \
+'(-v --verbose)--quiet[Quiet mode (warning and error only)]' \
+'--offline[Read product config from local disk instead of the hub]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+':product -- Product name:' \
+':source -- Source package base name (builds.name, without version/release):' \
+':arch -- Architecture ('\''x86_64'\'' / '\''noarch'\'', or '\''any'\''):' \
+&& ret=0
+;;
+(export)
+_arguments "${_arguments_options[@]}" \
+'--product=[Product name]:PRODUCT: ' \
+'--file=[Write JSON to this path instead of stdout]:PATH:_files' \
+'--remote=[Remote crbs-server address or configured profile name. If the config sets \`remote.default\`, this option can be omitted to use the default remote]:URL|NAME: ' \
+'--token=[Remote server API token (Bearer). Defaults to profile token/token_env/token_file -> CRBS_TOKEN env var]:TOKEN: ' \
+'--ca-cert=[Remote server CA certificate path (self-signed/internal CA scenarios)]:PATH:_files' \
+'--format=[Output format\: text (default) or json]:FORMAT:((text\:"Human-readable text (default)"
+json\:"Machine-readable JSON"))' \
+'(-q --quiet)-v[Verbose output (debug-level logging)]' \
+'(-q --quiet)--verbose[Verbose output (debug-level logging)]' \
+'(-v --verbose)-q[Quiet mode (warning and error only)]' \
+'(-v --verbose)--quiet[Quiet mode (warning and error only)]' \
+'--offline[Read product config from local disk instead of the hub]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+&& ret=0
+;;
+(import)
+_arguments "${_arguments_options[@]}" \
+'--file=[JSON document path, or '\''-'\'' to read stdin]:PATH: ' \
+'--remote=[Remote crbs-server address or configured profile name. If the config sets \`remote.default\`, this option can be omitted to use the default remote]:URL|NAME: ' \
+'--token=[Remote server API token (Bearer). Defaults to profile token/token_env/token_file -> CRBS_TOKEN env var]:TOKEN: ' \
+'--ca-cert=[Remote server CA certificate path (self-signed/internal CA scenarios)]:PATH:_files' \
+'--format=[Output format\: text (default) or json]:FORMAT:((text\:"Human-readable text (default)"
+json\:"Machine-readable JSON"))' \
+'(-q --quiet)-v[Verbose output (debug-level logging)]' \
+'(-q --quiet)--verbose[Verbose output (debug-level logging)]' \
+'(-v --verbose)-q[Quiet mode (warning and error only)]' \
+'(-v --verbose)--quiet[Quiet mode (warning and error only)]' \
+'--offline[Read product config from local disk instead of the hub]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" \
+":: :_crbs__admin__resource-profile__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:crbs-admin-resource-profile-help-command-$line[1]:"
+        case $line[1] in
+            (list)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(set)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(unset)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(export)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(import)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(help)
+_arguments "${_arguments_options[@]}" \
+":: :_crbs__admin__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:crbs-admin-help-command-$line[1]:"
+        case $line[1] in
+            (init)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(rebuild-repo)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(resource-profile)
+_arguments "${_arguments_options[@]}" \
+":: :_crbs__admin__help__resource-profile_commands" \
+"*::: :->resource-profile" \
+&& ret=0
+
+    case $state in
+    (resource-profile)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:crbs-admin-help-resource-profile-command-$line[1]:"
+        case $line[1] in
+            (list)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(set)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(unset)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(export)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(import)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(help)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(remote)
+_arguments "${_arguments_options[@]}" \
+'(-q --quiet)-v[Verbose output (debug-level logging)]' \
+'(-q --quiet)--verbose[Verbose output (debug-level logging)]' \
+'(-v --verbose)-q[Quiet mode (warning and error only)]' \
+'(-v --verbose)--quiet[Quiet mode (warning and error only)]' \
+'--offline[Read product config from local disk instead of the hub]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+":: :_crbs__remote_commands" \
+"*::: :->remote" \
+&& ret=0
+
+    case $state in
+    (remote)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:crbs-remote-command-$line[1]:"
+        case $line[1] in
+            (list)
+_arguments "${_arguments_options[@]}" \
+'--format=[Output format\: text (default) or json]:FORMAT:((text\:"Human-readable text (default)"
+json\:"Machine-readable JSON"))' \
+'(-q --quiet)-v[Verbose output (debug-level logging)]' \
+'(-q --quiet)--verbose[Verbose output (debug-level logging)]' \
+'(-v --verbose)-q[Quiet mode (warning and error only)]' \
+'(-v --verbose)--quiet[Quiet mode (warning and error only)]' \
+'--offline[Read product config from local disk instead of the hub]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+&& ret=0
+;;
+(test)
+_arguments "${_arguments_options[@]}" \
+'--format=[Output format\: text (default) or json]:FORMAT:((text\:"Human-readable text (default)"
+json\:"Machine-readable JSON"))' \
+'(-q --quiet)-v[Verbose output (debug-level logging)]' \
+'(-q --quiet)--verbose[Verbose output (debug-level logging)]' \
+'(-v --verbose)-q[Quiet mode (warning and error only)]' \
+'(-v --verbose)--quiet[Quiet mode (warning and error only)]' \
+'--offline[Read product config from local disk instead of the hub]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+':profile -- Profile name as shown by `crbs remote list` (a URL also works):' \
+&& ret=0
+;;
+(add)
+_arguments "${_arguments_options[@]}" \
+'--url=[Hub base URL (http\:// or https\://; a bare host defaults to http\://)]:URL: ' \
+'(--token-file --token)--token-env=[Name of the environment variable holding the API token (recommended; \`--remote\` reads the token from it at resolve time)]:VAR: ' \
+'(--token-env --token)--token-file=[Path to a file holding the API token (supports a leading ~)]:PATH:_files' \
+'--ca-cert=[Path to the hub CA certificate for TLS validation (self-signed or internal-CA hubs; same field the \`--ca-cert\` flag of other commands reads)]:PATH:_files' \
+'(--token-env --token-file)--token=[Inline API token (stored as plaintext in the config file; not recommended)]:TOKEN: ' \
+'--format=[Output format\: text (default) or json]:FORMAT:((text\:"Human-readable text (default)"
+json\:"Machine-readable JSON"))' \
+'--use-default[Make this profile the default remote (sets \`remote.default\`, so \`--remote\` can be omitted)]' \
+'(-q --quiet)-v[Verbose output (debug-level logging)]' \
+'(-q --quiet)--verbose[Verbose output (debug-level logging)]' \
+'(-v --verbose)-q[Quiet mode (warning and error only)]' \
+'(-v --verbose)--quiet[Quiet mode (warning and error only)]' \
+'--offline[Read product config from local disk instead of the hub]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+':name -- Profile name (must not look like a URL; `--remote <NAME>` resolves by this name):' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" \
+":: :_crbs__remote__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:crbs-remote-help-command-$line[1]:"
+        case $line[1] in
+            (list)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(test)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(add)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(config)
+_arguments "${_arguments_options[@]}" \
+'(-q --quiet)-v[Verbose output (debug-level logging)]' \
+'(-q --quiet)--verbose[Verbose output (debug-level logging)]' \
+'(-v --verbose)-q[Quiet mode (warning and error only)]' \
+'(-v --verbose)--quiet[Quiet mode (warning and error only)]' \
+'--offline[Read product config from local disk instead of the hub]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+":: :_crbs__config_commands" \
+"*::: :->config" \
+&& ret=0
+
+    case $state in
+    (config)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:crbs-config-command-$line[1]:"
+        case $line[1] in
+            (schema)
+_arguments "${_arguments_options[@]}" \
+'(-q --quiet)-v[Verbose output (debug-level logging)]' \
+'(-q --quiet)--verbose[Verbose output (debug-level logging)]' \
+'(-v --verbose)-q[Quiet mode (warning and error only)]' \
+'(-v --verbose)--quiet[Quiet mode (warning and error only)]' \
+'--offline[Read product config from local disk instead of the hub]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" \
+":: :_crbs__config__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:crbs-config-help-command-$line[1]:"
+        case $line[1] in
+            (schema)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(detached-run)
+_arguments "${_arguments_options[@]}" \
+'(-q --quiet)-v[Verbose output (debug-level logging)]' \
+'(-q --quiet)--verbose[Verbose output (debug-level logging)]' \
+'(-v --verbose)-q[Quiet mode (warning and error only)]' \
+'(-v --verbose)--quiet[Quiet mode (warning and error only)]' \
+'--offline[Read product config from local disk instead of the hub]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+':request_file -- Request file path:_files' \
+&& ret=0
+;;
+(completions)
+_arguments "${_arguments_options[@]}" \
+'(-q --quiet)-v[Verbose output (debug-level logging)]' \
+'(-q --quiet)--verbose[Verbose output (debug-level logging)]' \
+'(-v --verbose)-q[Quiet mode (warning and error only)]' \
+'(-v --verbose)--quiet[Quiet mode (warning and error only)]' \
+'--offline[Read product config from local disk instead of the hub]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+':shell -- Target shell:(bash elvish fish powershell zsh)' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" \
+":: :_crbs__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:crbs-help-command-$line[1]:"
+        case $line[1] in
+            (init)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(build)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(shell)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(clean)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(debug)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(status)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(gc)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(logs)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(cancel)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(verify)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(diff)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(sign)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(download)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(builds)
+_arguments "${_arguments_options[@]}" \
+":: :_crbs__help__builds_commands" \
+"*::: :->builds" \
+&& ret=0
+
+    case $state in
+    (builds)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:crbs-help-builds-command-$line[1]:"
+        case $line[1] in
+            (show)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(publish)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(unpublish)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(rebuild)
+_arguments "${_arguments_options[@]}" \
+":: :_crbs__help__rebuild_commands" \
+"*::: :->rebuild" \
+&& ret=0
+
+    case $state in
+    (rebuild)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:crbs-help-rebuild-command-$line[1]:"
+        case $line[1] in
+            (submit)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(status)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(cancel)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(products)
+_arguments "${_arguments_options[@]}" \
+":: :_crbs__help__products_commands" \
+"*::: :->products" \
+&& ret=0
+
+    case $state in
+    (products)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:crbs-help-products-command-$line[1]:"
+        case $line[1] in
+            (show)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(create)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(update)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(fork)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(delete)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(clean)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(history)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(export)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(publish)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(unpublish)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(transfer)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(acl)
+_arguments "${_arguments_options[@]}" \
+":: :_crbs__help__products__acl_commands" \
+"*::: :->acl" \
+&& ret=0
+
+    case $state in
+    (acl)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:crbs-help-products-acl-command-$line[1]:"
+        case $line[1] in
+            (list)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(grant)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(revoke)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(nihao)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(ping)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(whoami)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(admin)
+_arguments "${_arguments_options[@]}" \
+":: :_crbs__help__admin_commands" \
+"*::: :->admin" \
+&& ret=0
+
+    case $state in
+    (admin)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:crbs-help-admin-command-$line[1]:"
+        case $line[1] in
+            (init)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(rebuild-repo)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(resource-profile)
+_arguments "${_arguments_options[@]}" \
+":: :_crbs__help__admin__resource-profile_commands" \
+"*::: :->resource-profile" \
+&& ret=0
+
+    case $state in
+    (resource-profile)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:crbs-help-admin-resource-profile-command-$line[1]:"
+        case $line[1] in
+            (list)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(set)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(unset)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(export)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(import)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(remote)
+_arguments "${_arguments_options[@]}" \
+":: :_crbs__help__remote_commands" \
+"*::: :->remote" \
+&& ret=0
+
+    case $state in
+    (remote)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:crbs-help-remote-command-$line[1]:"
+        case $line[1] in
+            (list)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(test)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(add)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(config)
+_arguments "${_arguments_options[@]}" \
+":: :_crbs__help__config_commands" \
+"*::: :->config" \
+&& ret=0
+
+    case $state in
+    (config)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:crbs-help-config-command-$line[1]:"
+        case $line[1] in
+            (schema)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(detached-run)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(completions)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+}
+
+(( $+functions[_crbs_commands] )) ||
+_crbs_commands() {
+    local commands; commands=(
+'init:Initialize the build environment' \
+'build:Build one or more SRPMs' \
+'shell:Enter the environment for manual operations' \
+'clean:Clean up the environment' \
+'debug:Reproduce the build environment and prepare up to rpmbuild' \
+'status:View task list, or a single task'\''s detail with its child builds' \
+'gc:Clean up expired shared layers' \
+'logs:View build logs' \
+'cancel:Cancel a running task (cascades to its child builds)' \
+'verify:Local byte-level comparison of two tasks'\'' RPM artifact sets' \
+'diff:Compare artifacts and profile differences between two builds' \
+'sign:GPG-sign existing build artifacts' \
+'download:Download build artifacts to local' \
+'builds:Builds management and artifact inspection' \
+'rebuild:Server-side whole-repo rebuild batches (remote only)\: submit / status / cancel' \
+'products:List or view product configurations' \
+'nihao:Send a greeting request to the server to verify connectivity and authentication; hidden compat alias — the primary names are \`crbs ping\` / \`crbs whoami\` (same request, same output; kept so existing scripts keep working). Note\: clap_complete 4.5 static generators still list hidden commands, so \`nihao\` may remain in packaged completions until upstream filters them' \
+'ping:Probe server connectivity (reachability + authentication). Same request and output as the hidden compat alias \`crbs nihao\`' \
+'whoami:Show the user and role the server associates with your credentials. Same request and output as the hidden compat alias \`crbs nihao\`' \
+'admin:Admin-only operations (grouped)' \
+'remote:Manage remote server profiles in the local config (list / test / add). Profile removal or in-place editing is done by editing the config file directly (see examples/config/crbs.toml for the full format)' \
+'config:Configuration file schema operations' \
+'detached-run:Internal use\: run a submitted local build request in the background' \
+'completions:Generate shell completion scripts (bash/zsh/fish/powershell)' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'crbs commands' commands "$@"
+}
+(( $+functions[_crbs__help__products__acl_commands] )) ||
+_crbs__help__products__acl_commands() {
+    local commands; commands=(
+'list:List ACL entries for a product' \
+'grant:Grant ACL access to a user' \
+'revoke:Revoke ACL access from a user' \
+    )
+    _describe -t commands 'crbs help products acl commands' commands "$@"
+}
+(( $+functions[_crbs__products__acl_commands] )) ||
+_crbs__products__acl_commands() {
+    local commands; commands=(
+'list:List ACL entries for a product' \
+'grant:Grant ACL access to a user' \
+'revoke:Revoke ACL access from a user' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'crbs products acl commands' commands "$@"
+}
+(( $+functions[_crbs__products__help__acl_commands] )) ||
+_crbs__products__help__acl_commands() {
+    local commands; commands=(
+'list:List ACL entries for a product' \
+'grant:Grant ACL access to a user' \
+'revoke:Revoke ACL access from a user' \
+    )
+    _describe -t commands 'crbs products help acl commands' commands "$@"
+}
+(( $+functions[_crbs__help__remote__add_commands] )) ||
+_crbs__help__remote__add_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs help remote add commands' commands "$@"
+}
+(( $+functions[_crbs__remote__add_commands] )) ||
+_crbs__remote__add_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs remote add commands' commands "$@"
+}
+(( $+functions[_crbs__remote__help__add_commands] )) ||
+_crbs__remote__help__add_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs remote help add commands' commands "$@"
+}
+(( $+functions[_crbs__admin_commands] )) ||
+_crbs__admin_commands() {
+    local commands; commands=(
+'init:Remotely (re)initialize base_os on one or more workers via the hub' \
+'rebuild-repo:Rebuild a product'\''s published repo from current DB state (remote; admin only)' \
+'resource-profile:Manage package resource profiles (declared placement floors; remote; admin only)' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'crbs admin commands' commands "$@"
+}
+(( $+functions[_crbs__help__admin_commands] )) ||
+_crbs__help__admin_commands() {
+    local commands; commands=(
+'init:Remotely (re)initialize base_os on one or more workers via the hub' \
+'rebuild-repo:Rebuild a product'\''s published repo from current DB state (remote; admin only)' \
+'resource-profile:Manage package resource profiles (declared placement floors; remote; admin only)' \
+    )
+    _describe -t commands 'crbs help admin commands' commands "$@"
+}
+(( $+functions[_crbs__build_commands] )) ||
+_crbs__build_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs build commands' commands "$@"
+}
+(( $+functions[_crbs__help__build_commands] )) ||
+_crbs__help__build_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs help build commands' commands "$@"
+}
+(( $+functions[_crbs__builds_commands] )) ||
+_crbs__builds_commands() {
+    local commands; commands=(
+'show:Show build artifacts (list of files with metadata)' \
+'publish:Publish a build'\''s artifacts into the product repo (remote; admin/operator/submitter)' \
+'unpublish:Remove a build'\''s artifacts from the product repo (reversible; an older build may resurface)' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'crbs builds commands' commands "$@"
+}
+(( $+functions[_crbs__help__builds_commands] )) ||
+_crbs__help__builds_commands() {
+    local commands; commands=(
+'show:Show build artifacts (list of files with metadata)' \
+'publish:Publish a build'\''s artifacts into the product repo (remote; admin/operator/submitter)' \
+'unpublish:Remove a build'\''s artifacts from the product repo (reversible; an older build may resurface)' \
+    )
+    _describe -t commands 'crbs help builds commands' commands "$@"
+}
+(( $+functions[_crbs__cancel_commands] )) ||
+_crbs__cancel_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs cancel commands' commands "$@"
+}
+(( $+functions[_crbs__help__cancel_commands] )) ||
+_crbs__help__cancel_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs help cancel commands' commands "$@"
+}
+(( $+functions[_crbs__help__rebuild__cancel_commands] )) ||
+_crbs__help__rebuild__cancel_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs help rebuild cancel commands' commands "$@"
+}
+(( $+functions[_crbs__rebuild__cancel_commands] )) ||
+_crbs__rebuild__cancel_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs rebuild cancel commands' commands "$@"
+}
+(( $+functions[_crbs__rebuild__help__cancel_commands] )) ||
+_crbs__rebuild__help__cancel_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs rebuild help cancel commands' commands "$@"
+}
+(( $+functions[_crbs__clean_commands] )) ||
+_crbs__clean_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs clean commands' commands "$@"
+}
+(( $+functions[_crbs__help__clean_commands] )) ||
+_crbs__help__clean_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs help clean commands' commands "$@"
+}
+(( $+functions[_crbs__help__products__clean_commands] )) ||
+_crbs__help__products__clean_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs help products clean commands' commands "$@"
+}
+(( $+functions[_crbs__products__clean_commands] )) ||
+_crbs__products__clean_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs products clean commands' commands "$@"
+}
+(( $+functions[_crbs__products__help__clean_commands] )) ||
+_crbs__products__help__clean_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs products help clean commands' commands "$@"
+}
+(( $+functions[_crbs__completions_commands] )) ||
+_crbs__completions_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs completions commands' commands "$@"
+}
+(( $+functions[_crbs__help__completions_commands] )) ||
+_crbs__help__completions_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs help completions commands' commands "$@"
+}
+(( $+functions[_crbs__config_commands] )) ||
+_crbs__config_commands() {
+    local commands; commands=(
+'schema:Print the JSON Schema (draft-07) of the config files to stdout' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'crbs config commands' commands "$@"
+}
+(( $+functions[_crbs__help__config_commands] )) ||
+_crbs__help__config_commands() {
+    local commands; commands=(
+'schema:Print the JSON Schema (draft-07) of the config files to stdout' \
+    )
+    _describe -t commands 'crbs help config commands' commands "$@"
+}
+(( $+functions[_crbs__help__products__create_commands] )) ||
+_crbs__help__products__create_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs help products create commands' commands "$@"
+}
+(( $+functions[_crbs__products__create_commands] )) ||
+_crbs__products__create_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs products create commands' commands "$@"
+}
+(( $+functions[_crbs__products__help__create_commands] )) ||
+_crbs__products__help__create_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs products help create commands' commands "$@"
+}
+(( $+functions[_crbs__debug_commands] )) ||
+_crbs__debug_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs debug commands' commands "$@"
+}
+(( $+functions[_crbs__help__debug_commands] )) ||
+_crbs__help__debug_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs help debug commands' commands "$@"
+}
+(( $+functions[_crbs__help__products__delete_commands] )) ||
+_crbs__help__products__delete_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs help products delete commands' commands "$@"
+}
+(( $+functions[_crbs__products__delete_commands] )) ||
+_crbs__products__delete_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs products delete commands' commands "$@"
+}
+(( $+functions[_crbs__products__help__delete_commands] )) ||
+_crbs__products__help__delete_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs products help delete commands' commands "$@"
+}
+(( $+functions[_crbs__detached-run_commands] )) ||
+_crbs__detached-run_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs detached-run commands' commands "$@"
+}
+(( $+functions[_crbs__help__detached-run_commands] )) ||
+_crbs__help__detached-run_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs help detached-run commands' commands "$@"
+}
+(( $+functions[_crbs__diff_commands] )) ||
+_crbs__diff_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs diff commands' commands "$@"
+}
+(( $+functions[_crbs__help__diff_commands] )) ||
+_crbs__help__diff_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs help diff commands' commands "$@"
+}
+(( $+functions[_crbs__download_commands] )) ||
+_crbs__download_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs download commands' commands "$@"
+}
+(( $+functions[_crbs__help__download_commands] )) ||
+_crbs__help__download_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs help download commands' commands "$@"
+}
+(( $+functions[_crbs__admin__help__resource-profile__export_commands] )) ||
+_crbs__admin__help__resource-profile__export_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs admin help resource-profile export commands' commands "$@"
+}
+(( $+functions[_crbs__admin__resource-profile__export_commands] )) ||
+_crbs__admin__resource-profile__export_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs admin resource-profile export commands' commands "$@"
+}
+(( $+functions[_crbs__admin__resource-profile__help__export_commands] )) ||
+_crbs__admin__resource-profile__help__export_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs admin resource-profile help export commands' commands "$@"
+}
+(( $+functions[_crbs__help__admin__resource-profile__export_commands] )) ||
+_crbs__help__admin__resource-profile__export_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs help admin resource-profile export commands' commands "$@"
+}
+(( $+functions[_crbs__help__products__export_commands] )) ||
+_crbs__help__products__export_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs help products export commands' commands "$@"
+}
+(( $+functions[_crbs__products__export_commands] )) ||
+_crbs__products__export_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs products export commands' commands "$@"
+}
+(( $+functions[_crbs__products__help__export_commands] )) ||
+_crbs__products__help__export_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs products help export commands' commands "$@"
+}
+(( $+functions[_crbs__help__products__fork_commands] )) ||
+_crbs__help__products__fork_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs help products fork commands' commands "$@"
+}
+(( $+functions[_crbs__products__fork_commands] )) ||
+_crbs__products__fork_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs products fork commands' commands "$@"
+}
+(( $+functions[_crbs__products__help__fork_commands] )) ||
+_crbs__products__help__fork_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs products help fork commands' commands "$@"
+}
+(( $+functions[_crbs__gc_commands] )) ||
+_crbs__gc_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs gc commands' commands "$@"
+}
+(( $+functions[_crbs__help__gc_commands] )) ||
+_crbs__help__gc_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs help gc commands' commands "$@"
+}
+(( $+functions[_crbs__help__products__acl__grant_commands] )) ||
+_crbs__help__products__acl__grant_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs help products acl grant commands' commands "$@"
+}
+(( $+functions[_crbs__products__acl__grant_commands] )) ||
+_crbs__products__acl__grant_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs products acl grant commands' commands "$@"
+}
+(( $+functions[_crbs__products__acl__help__grant_commands] )) ||
+_crbs__products__acl__help__grant_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs products acl help grant commands' commands "$@"
+}
+(( $+functions[_crbs__products__help__acl__grant_commands] )) ||
+_crbs__products__help__acl__grant_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs products help acl grant commands' commands "$@"
+}
+(( $+functions[_crbs__admin__help_commands] )) ||
+_crbs__admin__help_commands() {
+    local commands; commands=(
+'init:Remotely (re)initialize base_os on one or more workers via the hub' \
+'rebuild-repo:Rebuild a product'\''s published repo from current DB state (remote; admin only)' \
+'resource-profile:Manage package resource profiles (declared placement floors; remote; admin only)' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'crbs admin help commands' commands "$@"
+}
+(( $+functions[_crbs__admin__help__help_commands] )) ||
+_crbs__admin__help__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs admin help help commands' commands "$@"
+}
+(( $+functions[_crbs__admin__resource-profile__help_commands] )) ||
+_crbs__admin__resource-profile__help_commands() {
+    local commands; commands=(
+'list:List resource profiles of a product (declared + learned groups)' \
+'set:Declare a placement floor (declared group) for product/source/arch' \
+'unset:Clear the declared placement floor of product/source/arch (learned data is kept)' \
+'export:Export resource profiles of a product as a JSON document (round-trips with import)' \
+'import:Import declared floors from an export JSON document (one PUT per row; rows apply individually and are not transactional — the first failure aborts)' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'crbs admin resource-profile help commands' commands "$@"
+}
+(( $+functions[_crbs__admin__resource-profile__help__help_commands] )) ||
+_crbs__admin__resource-profile__help__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs admin resource-profile help help commands' commands "$@"
+}
+(( $+functions[_crbs__builds__help_commands] )) ||
+_crbs__builds__help_commands() {
+    local commands; commands=(
+'show:Show build artifacts (list of files with metadata)' \
+'publish:Publish a build'\''s artifacts into the product repo (remote; admin/operator/submitter)' \
+'unpublish:Remove a build'\''s artifacts from the product repo (reversible; an older build may resurface)' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'crbs builds help commands' commands "$@"
+}
+(( $+functions[_crbs__builds__help__help_commands] )) ||
+_crbs__builds__help__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs builds help help commands' commands "$@"
+}
+(( $+functions[_crbs__config__help_commands] )) ||
+_crbs__config__help_commands() {
+    local commands; commands=(
+'schema:Print the JSON Schema (draft-07) of the config files to stdout' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'crbs config help commands' commands "$@"
+}
+(( $+functions[_crbs__config__help__help_commands] )) ||
+_crbs__config__help__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs config help help commands' commands "$@"
+}
+(( $+functions[_crbs__help_commands] )) ||
+_crbs__help_commands() {
+    local commands; commands=(
+'init:Initialize the build environment' \
+'build:Build one or more SRPMs' \
+'shell:Enter the environment for manual operations' \
+'clean:Clean up the environment' \
+'debug:Reproduce the build environment and prepare up to rpmbuild' \
+'status:View task list, or a single task'\''s detail with its child builds' \
+'gc:Clean up expired shared layers' \
+'logs:View build logs' \
+'cancel:Cancel a running task (cascades to its child builds)' \
+'verify:Local byte-level comparison of two tasks'\'' RPM artifact sets' \
+'diff:Compare artifacts and profile differences between two builds' \
+'sign:GPG-sign existing build artifacts' \
+'download:Download build artifacts to local' \
+'builds:Builds management and artifact inspection' \
+'rebuild:Server-side whole-repo rebuild batches (remote only)\: submit / status / cancel' \
+'products:List or view product configurations' \
+'nihao:Send a greeting request to the server to verify connectivity and authentication; hidden compat alias — the primary names are \`crbs ping\` / \`crbs whoami\` (same request, same output; kept so existing scripts keep working). Note\: clap_complete 4.5 static generators still list hidden commands, so \`nihao\` may remain in packaged completions until upstream filters them' \
+'ping:Probe server connectivity (reachability + authentication). Same request and output as the hidden compat alias \`crbs nihao\`' \
+'whoami:Show the user and role the server associates with your credentials. Same request and output as the hidden compat alias \`crbs nihao\`' \
+'admin:Admin-only operations (grouped)' \
+'remote:Manage remote server profiles in the local config (list / test / add). Profile removal or in-place editing is done by editing the config file directly (see examples/config/crbs.toml for the full format)' \
+'config:Configuration file schema operations' \
+'detached-run:Internal use\: run a submitted local build request in the background' \
+'completions:Generate shell completion scripts (bash/zsh/fish/powershell)' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'crbs help commands' commands "$@"
+}
+(( $+functions[_crbs__help__help_commands] )) ||
+_crbs__help__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs help help commands' commands "$@"
+}
+(( $+functions[_crbs__products__acl__help_commands] )) ||
+_crbs__products__acl__help_commands() {
+    local commands; commands=(
+'list:List ACL entries for a product' \
+'grant:Grant ACL access to a user' \
+'revoke:Revoke ACL access from a user' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'crbs products acl help commands' commands "$@"
+}
+(( $+functions[_crbs__products__acl__help__help_commands] )) ||
+_crbs__products__acl__help__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs products acl help help commands' commands "$@"
+}
+(( $+functions[_crbs__products__help_commands] )) ||
+_crbs__products__help_commands() {
+    local commands; commands=(
+'show:Show detailed configuration for the specified product' \
+'create:Create a new product (remote only). Body config is read from a TOML file' \
+'update:Update product config (remote only). Requires \`expected_revision\` for optimistic locking; a mismatch surfaces as HTTP 409' \
+'fork:fork an existing product into a new one' \
+'delete:Delete a product row (remote only). This does not touch on-disk artifacts — for that use \`crbs products clean\`' \
+'clean:Clean a product'\''s published repo and on-disk artifacts on the hub (remote only; admin role). The clean task runs asynchronously on the server and is rejected while the product has active builds' \
+'history:Show product config revision history (remote only)' \
+'export:Export the chain-resolved product config as TOML (remote only)' \
+'publish:Publish a product (make it public). Remote only' \
+'unpublish:Unpublish a product (make it private). Remote only' \
+'transfer:Transfer product ownership to another user. Remote only' \
+'acl:Manage product ACL (list, grant, revoke). Remote only' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'crbs products help commands' commands "$@"
+}
+(( $+functions[_crbs__products__help__help_commands] )) ||
+_crbs__products__help__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs products help help commands' commands "$@"
+}
+(( $+functions[_crbs__rebuild__help_commands] )) ||
+_crbs__rebuild__help_commands() {
+    local commands; commands=(
+'submit:Submit a whole-repo rebuild batch for a product' \
+'status:Show a rebuild batch\: summary, per-round progress, failures by error code' \
+'cancel:Cancel an in-flight rebuild batch (cascades to in-flight builds)' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'crbs rebuild help commands' commands "$@"
+}
+(( $+functions[_crbs__rebuild__help__help_commands] )) ||
+_crbs__rebuild__help__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs rebuild help help commands' commands "$@"
+}
+(( $+functions[_crbs__remote__help_commands] )) ||
+_crbs__remote__help_commands() {
+    local commands; commands=(
+'list:List configured remote profiles (name / URL / auth method; token values are never shown)' \
+'test:Probe a profile'\''s connectivity and authentication against the hub (same ping endpoint as \`crbs ping\`; reports URL and authenticated identity)' \
+'add:Add a remote profile to the user config (~/.config/crbs/crbs.toml), preserving existing comments and formatting. Without auth options the profile is created for anonymous access' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'crbs remote help commands' commands "$@"
+}
+(( $+functions[_crbs__remote__help__help_commands] )) ||
+_crbs__remote__help__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs remote help help commands' commands "$@"
+}
+(( $+functions[_crbs__help__products__history_commands] )) ||
+_crbs__help__products__history_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs help products history commands' commands "$@"
+}
+(( $+functions[_crbs__products__help__history_commands] )) ||
+_crbs__products__help__history_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs products help history commands' commands "$@"
+}
+(( $+functions[_crbs__products__history_commands] )) ||
+_crbs__products__history_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs products history commands' commands "$@"
+}
+(( $+functions[_crbs__admin__help__resource-profile__import_commands] )) ||
+_crbs__admin__help__resource-profile__import_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs admin help resource-profile import commands' commands "$@"
+}
+(( $+functions[_crbs__admin__resource-profile__help__import_commands] )) ||
+_crbs__admin__resource-profile__help__import_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs admin resource-profile help import commands' commands "$@"
+}
+(( $+functions[_crbs__admin__resource-profile__import_commands] )) ||
+_crbs__admin__resource-profile__import_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs admin resource-profile import commands' commands "$@"
+}
+(( $+functions[_crbs__help__admin__resource-profile__import_commands] )) ||
+_crbs__help__admin__resource-profile__import_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs help admin resource-profile import commands' commands "$@"
+}
+(( $+functions[_crbs__admin__help__init_commands] )) ||
+_crbs__admin__help__init_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs admin help init commands' commands "$@"
+}
+(( $+functions[_crbs__admin__init_commands] )) ||
+_crbs__admin__init_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs admin init commands' commands "$@"
+}
+(( $+functions[_crbs__help__admin__init_commands] )) ||
+_crbs__help__admin__init_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs help admin init commands' commands "$@"
+}
+(( $+functions[_crbs__help__init_commands] )) ||
+_crbs__help__init_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs help init commands' commands "$@"
+}
+(( $+functions[_crbs__init_commands] )) ||
+_crbs__init_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs init commands' commands "$@"
+}
+(( $+functions[_crbs__admin__help__resource-profile__list_commands] )) ||
+_crbs__admin__help__resource-profile__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs admin help resource-profile list commands' commands "$@"
+}
+(( $+functions[_crbs__admin__resource-profile__help__list_commands] )) ||
+_crbs__admin__resource-profile__help__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs admin resource-profile help list commands' commands "$@"
+}
+(( $+functions[_crbs__admin__resource-profile__list_commands] )) ||
+_crbs__admin__resource-profile__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs admin resource-profile list commands' commands "$@"
+}
+(( $+functions[_crbs__help__admin__resource-profile__list_commands] )) ||
+_crbs__help__admin__resource-profile__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs help admin resource-profile list commands' commands "$@"
+}
+(( $+functions[_crbs__help__products__acl__list_commands] )) ||
+_crbs__help__products__acl__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs help products acl list commands' commands "$@"
+}
+(( $+functions[_crbs__help__remote__list_commands] )) ||
+_crbs__help__remote__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs help remote list commands' commands "$@"
+}
+(( $+functions[_crbs__products__acl__help__list_commands] )) ||
+_crbs__products__acl__help__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs products acl help list commands' commands "$@"
+}
+(( $+functions[_crbs__products__acl__list_commands] )) ||
+_crbs__products__acl__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs products acl list commands' commands "$@"
+}
+(( $+functions[_crbs__products__help__acl__list_commands] )) ||
+_crbs__products__help__acl__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs products help acl list commands' commands "$@"
+}
+(( $+functions[_crbs__remote__help__list_commands] )) ||
+_crbs__remote__help__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs remote help list commands' commands "$@"
+}
+(( $+functions[_crbs__remote__list_commands] )) ||
+_crbs__remote__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs remote list commands' commands "$@"
+}
+(( $+functions[_crbs__help__logs_commands] )) ||
+_crbs__help__logs_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs help logs commands' commands "$@"
+}
+(( $+functions[_crbs__logs_commands] )) ||
+_crbs__logs_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs logs commands' commands "$@"
+}
+(( $+functions[_crbs__help__nihao_commands] )) ||
+_crbs__help__nihao_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs help nihao commands' commands "$@"
+}
+(( $+functions[_crbs__nihao_commands] )) ||
+_crbs__nihao_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs nihao commands' commands "$@"
+}
+(( $+functions[_crbs__help__ping_commands] )) ||
+_crbs__help__ping_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs help ping commands' commands "$@"
+}
+(( $+functions[_crbs__ping_commands] )) ||
+_crbs__ping_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs ping commands' commands "$@"
+}
+(( $+functions[_crbs__help__products_commands] )) ||
+_crbs__help__products_commands() {
+    local commands; commands=(
+'show:Show detailed configuration for the specified product' \
+'create:Create a new product (remote only). Body config is read from a TOML file' \
+'update:Update product config (remote only). Requires \`expected_revision\` for optimistic locking; a mismatch surfaces as HTTP 409' \
+'fork:fork an existing product into a new one' \
+'delete:Delete a product row (remote only). This does not touch on-disk artifacts — for that use \`crbs products clean\`' \
+'clean:Clean a product'\''s published repo and on-disk artifacts on the hub (remote only; admin role). The clean task runs asynchronously on the server and is rejected while the product has active builds' \
+'history:Show product config revision history (remote only)' \
+'export:Export the chain-resolved product config as TOML (remote only)' \
+'publish:Publish a product (make it public). Remote only' \
+'unpublish:Unpublish a product (make it private). Remote only' \
+'transfer:Transfer product ownership to another user. Remote only' \
+'acl:Manage product ACL (list, grant, revoke). Remote only' \
+    )
+    _describe -t commands 'crbs help products commands' commands "$@"
+}
+(( $+functions[_crbs__products_commands] )) ||
+_crbs__products_commands() {
+    local commands; commands=(
+'show:Show detailed configuration for the specified product' \
+'create:Create a new product (remote only). Body config is read from a TOML file' \
+'update:Update product config (remote only). Requires \`expected_revision\` for optimistic locking; a mismatch surfaces as HTTP 409' \
+'fork:fork an existing product into a new one' \
+'delete:Delete a product row (remote only). This does not touch on-disk artifacts — for that use \`crbs products clean\`' \
+'clean:Clean a product'\''s published repo and on-disk artifacts on the hub (remote only; admin role). The clean task runs asynchronously on the server and is rejected while the product has active builds' \
+'history:Show product config revision history (remote only)' \
+'export:Export the chain-resolved product config as TOML (remote only)' \
+'publish:Publish a product (make it public). Remote only' \
+'unpublish:Unpublish a product (make it private). Remote only' \
+'transfer:Transfer product ownership to another user. Remote only' \
+'acl:Manage product ACL (list, grant, revoke). Remote only' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'crbs products commands' commands "$@"
+}
+(( $+functions[_crbs__builds__help__publish_commands] )) ||
+_crbs__builds__help__publish_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs builds help publish commands' commands "$@"
+}
+(( $+functions[_crbs__builds__publish_commands] )) ||
+_crbs__builds__publish_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs builds publish commands' commands "$@"
+}
+(( $+functions[_crbs__help__builds__publish_commands] )) ||
+_crbs__help__builds__publish_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs help builds publish commands' commands "$@"
+}
+(( $+functions[_crbs__help__products__publish_commands] )) ||
+_crbs__help__products__publish_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs help products publish commands' commands "$@"
+}
+(( $+functions[_crbs__products__help__publish_commands] )) ||
+_crbs__products__help__publish_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs products help publish commands' commands "$@"
+}
+(( $+functions[_crbs__products__publish_commands] )) ||
+_crbs__products__publish_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs products publish commands' commands "$@"
+}
+(( $+functions[_crbs__help__rebuild_commands] )) ||
+_crbs__help__rebuild_commands() {
+    local commands; commands=(
+'submit:Submit a whole-repo rebuild batch for a product' \
+'status:Show a rebuild batch\: summary, per-round progress, failures by error code' \
+'cancel:Cancel an in-flight rebuild batch (cascades to in-flight builds)' \
+    )
+    _describe -t commands 'crbs help rebuild commands' commands "$@"
+}
+(( $+functions[_crbs__rebuild_commands] )) ||
+_crbs__rebuild_commands() {
+    local commands; commands=(
+'submit:Submit a whole-repo rebuild batch for a product' \
+'status:Show a rebuild batch\: summary, per-round progress, failures by error code' \
+'cancel:Cancel an in-flight rebuild batch (cascades to in-flight builds)' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'crbs rebuild commands' commands "$@"
+}
+(( $+functions[_crbs__admin__help__rebuild-repo_commands] )) ||
+_crbs__admin__help__rebuild-repo_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs admin help rebuild-repo commands' commands "$@"
+}
+(( $+functions[_crbs__admin__rebuild-repo_commands] )) ||
+_crbs__admin__rebuild-repo_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs admin rebuild-repo commands' commands "$@"
+}
+(( $+functions[_crbs__help__admin__rebuild-repo_commands] )) ||
+_crbs__help__admin__rebuild-repo_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs help admin rebuild-repo commands' commands "$@"
+}
+(( $+functions[_crbs__help__remote_commands] )) ||
+_crbs__help__remote_commands() {
+    local commands; commands=(
+'list:List configured remote profiles (name / URL / auth method; token values are never shown)' \
+'test:Probe a profile'\''s connectivity and authentication against the hub (same ping endpoint as \`crbs ping\`; reports URL and authenticated identity)' \
+'add:Add a remote profile to the user config (~/.config/crbs/crbs.toml), preserving existing comments and formatting. Without auth options the profile is created for anonymous access' \
+    )
+    _describe -t commands 'crbs help remote commands' commands "$@"
+}
+(( $+functions[_crbs__remote_commands] )) ||
+_crbs__remote_commands() {
+    local commands; commands=(
+'list:List configured remote profiles (name / URL / auth method; token values are never shown)' \
+'test:Probe a profile'\''s connectivity and authentication against the hub (same ping endpoint as \`crbs ping\`; reports URL and authenticated identity)' \
+'add:Add a remote profile to the user config (~/.config/crbs/crbs.toml), preserving existing comments and formatting. Without auth options the profile is created for anonymous access' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'crbs remote commands' commands "$@"
+}
+(( $+functions[_crbs__admin__help__resource-profile_commands] )) ||
+_crbs__admin__help__resource-profile_commands() {
+    local commands; commands=(
+'list:List resource profiles of a product (declared + learned groups)' \
+'set:Declare a placement floor (declared group) for product/source/arch' \
+'unset:Clear the declared placement floor of product/source/arch (learned data is kept)' \
+'export:Export resource profiles of a product as a JSON document (round-trips with import)' \
+'import:Import declared floors from an export JSON document (one PUT per row; rows apply individually and are not transactional — the first failure aborts)' \
+    )
+    _describe -t commands 'crbs admin help resource-profile commands' commands "$@"
+}
+(( $+functions[_crbs__admin__resource-profile_commands] )) ||
+_crbs__admin__resource-profile_commands() {
+    local commands; commands=(
+'list:List resource profiles of a product (declared + learned groups)' \
+'set:Declare a placement floor (declared group) for product/source/arch' \
+'unset:Clear the declared placement floor of product/source/arch (learned data is kept)' \
+'export:Export resource profiles of a product as a JSON document (round-trips with import)' \
+'import:Import declared floors from an export JSON document (one PUT per row; rows apply individually and are not transactional — the first failure aborts)' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'crbs admin resource-profile commands' commands "$@"
+}
+(( $+functions[_crbs__help__admin__resource-profile_commands] )) ||
+_crbs__help__admin__resource-profile_commands() {
+    local commands; commands=(
+'list:List resource profiles of a product (declared + learned groups)' \
+'set:Declare a placement floor (declared group) for product/source/arch' \
+'unset:Clear the declared placement floor of product/source/arch (learned data is kept)' \
+'export:Export resource profiles of a product as a JSON document (round-trips with import)' \
+'import:Import declared floors from an export JSON document (one PUT per row; rows apply individually and are not transactional — the first failure aborts)' \
+    )
+    _describe -t commands 'crbs help admin resource-profile commands' commands "$@"
+}
+(( $+functions[_crbs__help__products__acl__revoke_commands] )) ||
+_crbs__help__products__acl__revoke_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs help products acl revoke commands' commands "$@"
+}
+(( $+functions[_crbs__products__acl__help__revoke_commands] )) ||
+_crbs__products__acl__help__revoke_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs products acl help revoke commands' commands "$@"
+}
+(( $+functions[_crbs__products__acl__revoke_commands] )) ||
+_crbs__products__acl__revoke_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs products acl revoke commands' commands "$@"
+}
+(( $+functions[_crbs__products__help__acl__revoke_commands] )) ||
+_crbs__products__help__acl__revoke_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs products help acl revoke commands' commands "$@"
+}
+(( $+functions[_crbs__config__help__schema_commands] )) ||
+_crbs__config__help__schema_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs config help schema commands' commands "$@"
+}
+(( $+functions[_crbs__config__schema_commands] )) ||
+_crbs__config__schema_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs config schema commands' commands "$@"
+}
+(( $+functions[_crbs__help__config__schema_commands] )) ||
+_crbs__help__config__schema_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs help config schema commands' commands "$@"
+}
+(( $+functions[_crbs__admin__help__resource-profile__set_commands] )) ||
+_crbs__admin__help__resource-profile__set_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs admin help resource-profile set commands' commands "$@"
+}
+(( $+functions[_crbs__admin__resource-profile__help__set_commands] )) ||
+_crbs__admin__resource-profile__help__set_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs admin resource-profile help set commands' commands "$@"
+}
+(( $+functions[_crbs__admin__resource-profile__set_commands] )) ||
+_crbs__admin__resource-profile__set_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs admin resource-profile set commands' commands "$@"
+}
+(( $+functions[_crbs__help__admin__resource-profile__set_commands] )) ||
+_crbs__help__admin__resource-profile__set_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs help admin resource-profile set commands' commands "$@"
+}
+(( $+functions[_crbs__help__shell_commands] )) ||
+_crbs__help__shell_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs help shell commands' commands "$@"
+}
+(( $+functions[_crbs__shell_commands] )) ||
+_crbs__shell_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs shell commands' commands "$@"
+}
+(( $+functions[_crbs__builds__help__show_commands] )) ||
+_crbs__builds__help__show_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs builds help show commands' commands "$@"
+}
+(( $+functions[_crbs__builds__show_commands] )) ||
+_crbs__builds__show_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs builds show commands' commands "$@"
+}
+(( $+functions[_crbs__help__builds__show_commands] )) ||
+_crbs__help__builds__show_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs help builds show commands' commands "$@"
+}
+(( $+functions[_crbs__help__products__show_commands] )) ||
+_crbs__help__products__show_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs help products show commands' commands "$@"
+}
+(( $+functions[_crbs__products__help__show_commands] )) ||
+_crbs__products__help__show_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs products help show commands' commands "$@"
+}
+(( $+functions[_crbs__products__show_commands] )) ||
+_crbs__products__show_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs products show commands' commands "$@"
+}
+(( $+functions[_crbs__help__sign_commands] )) ||
+_crbs__help__sign_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs help sign commands' commands "$@"
+}
+(( $+functions[_crbs__sign_commands] )) ||
+_crbs__sign_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs sign commands' commands "$@"
+}
+(( $+functions[_crbs__help__rebuild__status_commands] )) ||
+_crbs__help__rebuild__status_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs help rebuild status commands' commands "$@"
+}
+(( $+functions[_crbs__help__status_commands] )) ||
+_crbs__help__status_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs help status commands' commands "$@"
+}
+(( $+functions[_crbs__rebuild__help__status_commands] )) ||
+_crbs__rebuild__help__status_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs rebuild help status commands' commands "$@"
+}
+(( $+functions[_crbs__rebuild__status_commands] )) ||
+_crbs__rebuild__status_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs rebuild status commands' commands "$@"
+}
+(( $+functions[_crbs__status_commands] )) ||
+_crbs__status_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs status commands' commands "$@"
+}
+(( $+functions[_crbs__help__rebuild__submit_commands] )) ||
+_crbs__help__rebuild__submit_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs help rebuild submit commands' commands "$@"
+}
+(( $+functions[_crbs__rebuild__help__submit_commands] )) ||
+_crbs__rebuild__help__submit_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs rebuild help submit commands' commands "$@"
+}
+(( $+functions[_crbs__rebuild__submit_commands] )) ||
+_crbs__rebuild__submit_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs rebuild submit commands' commands "$@"
+}
+(( $+functions[_crbs__help__remote__test_commands] )) ||
+_crbs__help__remote__test_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs help remote test commands' commands "$@"
+}
+(( $+functions[_crbs__remote__help__test_commands] )) ||
+_crbs__remote__help__test_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs remote help test commands' commands "$@"
+}
+(( $+functions[_crbs__remote__test_commands] )) ||
+_crbs__remote__test_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs remote test commands' commands "$@"
+}
+(( $+functions[_crbs__help__products__transfer_commands] )) ||
+_crbs__help__products__transfer_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs help products transfer commands' commands "$@"
+}
+(( $+functions[_crbs__products__help__transfer_commands] )) ||
+_crbs__products__help__transfer_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs products help transfer commands' commands "$@"
+}
+(( $+functions[_crbs__products__transfer_commands] )) ||
+_crbs__products__transfer_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs products transfer commands' commands "$@"
+}
+(( $+functions[_crbs__builds__help__unpublish_commands] )) ||
+_crbs__builds__help__unpublish_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs builds help unpublish commands' commands "$@"
+}
+(( $+functions[_crbs__builds__unpublish_commands] )) ||
+_crbs__builds__unpublish_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs builds unpublish commands' commands "$@"
+}
+(( $+functions[_crbs__help__builds__unpublish_commands] )) ||
+_crbs__help__builds__unpublish_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs help builds unpublish commands' commands "$@"
+}
+(( $+functions[_crbs__help__products__unpublish_commands] )) ||
+_crbs__help__products__unpublish_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs help products unpublish commands' commands "$@"
+}
+(( $+functions[_crbs__products__help__unpublish_commands] )) ||
+_crbs__products__help__unpublish_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs products help unpublish commands' commands "$@"
+}
+(( $+functions[_crbs__products__unpublish_commands] )) ||
+_crbs__products__unpublish_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs products unpublish commands' commands "$@"
+}
+(( $+functions[_crbs__admin__help__resource-profile__unset_commands] )) ||
+_crbs__admin__help__resource-profile__unset_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs admin help resource-profile unset commands' commands "$@"
+}
+(( $+functions[_crbs__admin__resource-profile__help__unset_commands] )) ||
+_crbs__admin__resource-profile__help__unset_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs admin resource-profile help unset commands' commands "$@"
+}
+(( $+functions[_crbs__admin__resource-profile__unset_commands] )) ||
+_crbs__admin__resource-profile__unset_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs admin resource-profile unset commands' commands "$@"
+}
+(( $+functions[_crbs__help__admin__resource-profile__unset_commands] )) ||
+_crbs__help__admin__resource-profile__unset_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs help admin resource-profile unset commands' commands "$@"
+}
+(( $+functions[_crbs__help__products__update_commands] )) ||
+_crbs__help__products__update_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs help products update commands' commands "$@"
+}
+(( $+functions[_crbs__products__help__update_commands] )) ||
+_crbs__products__help__update_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs products help update commands' commands "$@"
+}
+(( $+functions[_crbs__products__update_commands] )) ||
+_crbs__products__update_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs products update commands' commands "$@"
+}
+(( $+functions[_crbs__help__verify_commands] )) ||
+_crbs__help__verify_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs help verify commands' commands "$@"
+}
+(( $+functions[_crbs__verify_commands] )) ||
+_crbs__verify_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs verify commands' commands "$@"
+}
+(( $+functions[_crbs__help__whoami_commands] )) ||
+_crbs__help__whoami_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs help whoami commands' commands "$@"
+}
+(( $+functions[_crbs__whoami_commands] )) ||
+_crbs__whoami_commands() {
+    local commands; commands=()
+    _describe -t commands 'crbs whoami commands' commands "$@"
+}
+
+if [ "$funcstack[1]" = "_crbs" ]; then
+    _crbs "$@"
+else
+    compdef _crbs crbs
+fi

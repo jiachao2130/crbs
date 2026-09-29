@@ -1,0 +1,4 @@
+# crbs-server 用户：由 crbs-server 子包创建（只装 base 不建此用户）。
+# 加入 crbs 组以调用 setuid helper 并读写数据目录。
+u crbs-server - "CRBS server daemon" /var/lib/crbs /sbin/nologin
+m crbs-server crbs

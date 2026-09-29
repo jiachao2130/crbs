@@ -1,0 +1,12 @@
+base_packages = ["bash", "rpm-build", "gcc", "make", "glibc-devel"]
+arches = ["x86_64", "aarch64"]
+
+[[repos]]
+name = "base"
+baseurl = "http://hub.example.com/repo/mydist/$basearch"
+gpgcheck = false
+
+[[repos]]
+name = "updates"
+baseurl = "http://hub.example.com/repo/mydist-updates/$basearch"
+gpgcheck = false

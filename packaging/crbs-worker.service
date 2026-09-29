@@ -1,0 +1,54 @@
+[Unit]
+Description=CRBS Distributed Build Worker
+# worker 拨号远端 hub：online 而非 target，避免开机早期注册失败循环。
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/crbs-worker --config /etc/crbs/worker.toml run
+Restart=on-failure
+RestartSec=10
+
+# Run as an unprivileged dedicated user. Privileged operations (mount, chroot,
+# container spawn) are delegated to the setuid-root crbs-priv-helper.
+User=crbs-worker
+Group=crbs
+
+# Resource limits
+LimitNOFILE=65536
+
+# Hardening, mirroring crbs-server.service. ReadWritePaths covers the default
+# locations the worker writes: /var/lib/crbs (crbs_root, build_dir),
+# /var/tmp (tmp_dir) and /dev/shm (tmpfs_dir).
+ProtectSystem=strict
+ReadWritePaths=/var/lib/crbs /var/tmp /dev/shm
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectClock=yes
+ProtectHostname=yes
+LockPersonality=yes
+RestrictRealtime=yes
+SystemCallArchitectures=native
+UMask=0002
+# NOTE: If you override build_dir / tmp_dir / tmpfs_dir (or point result_dir
+# elsewhere) in worker.toml, you MUST add those paths to ReadWritePaths,
+# otherwise the worker sees them as read-only and builds fail with EROFS.
+# Write the full list into the drop-in
+# /etc/systemd/system/crbs-worker.service.d/readwrite.conf.
+#
+# Deliberately NOT enabled — the setuid-root helper runs down this exec chain
+# and must keep working:
+# - NoNewPrivileges / RestrictSUIDSGID: would disable the setuid bit on the
+#   helper binary, breaking every privileged operation.
+# - CapabilityBoundingSet (and AmbientCapabilities): an emptied bounding set
+#   is inherited by the helper across exec and cannot be regained.
+# - RestrictNamespaces: the helper needs unshare and systemd-nspawn.
+# - ProtectControlGroups: nspawn must create the payload subcgroup.
+# - PrivateDevices: base_os install binds the host /dev into the container.
+# - PrivateTmp: privatizing /var/tmp hides cross-restart orphaned mounts from
+#   the startup mount GC sweep (tmp_dir is one of its scan domains).
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,160 @@
+# 产品配置：fedora — /etc/crbs/products/fedora.toml
+#
+# 产品特有字段（base_packages、repos）必须配置。
+# 与全局同名字段（如 builder_user、ccache_enabled 等）省略则表示继承全局值。
+#
+# 首次运行 `crbs init fedora` 时，若此文件不存在会自动生成模板。
+# 生成后需要手动编辑（设置 base_packages 和 repos），然后再次运行 init。
+
+# =============================================================================
+# 产品特有（必须配置）
+# =============================================================================
+
+# 用户构建工具链。init 时通过 `dnf --installroot` 安装到 base_os。
+# CRBS 会自动安装自身运行所需的核心包：bash、coreutils、shadow-utils、sudo。
+# 若全局或产品启用了 ccache，ccache 也会自动追加到此列表。
+# 这里只需要填写你真正想装进 base_os 的构建环境包。
+base_packages = [
+    "rpm-build",
+    "dnf",
+    "make",
+    "gcc",
+    "glibc-devel",
+]
+
+# 仓库配置数组（至少一个）。init 时写入 base_os 的 /etc/yum.repos.d/。
+# dnf install 后会被重写（防止 fedora-release 等包覆盖），所以此处配置是最终生效的。
+[[repos]]
+name = "fedora"
+baseurl = "https://mirrors.tuna.tsinghua.edu.cn/fedora/releases/44/Everything/x86_64/os/"
+gpgcheck = false
+# gpgkey = "/etc/pki/rpm-gpg/RPM-GPG-KEY-fedora-44-x86_64"
+
+# 可配置多个仓库
+# [[repos]]
+# name = "fedora-updates"
+# baseurl = "https://mirrors.tuna.tsinghua.edu.cn/fedora/updates/44/Everything/x86_64/"
+# gpgcheck = true
+# gpgkey = "/etc/pki/rpm-gpg/RPM-GPG-KEY-fedora-44-x86_64"
+
+# =============================================================================
+# 覆盖全局（可选，省略则继承 /etc/crbs/crbs.toml 中的值）
+# =============================================================================
+
+# 构建用户。若产品需要独立的构建用户（如与其他产品隔离权限），可在此覆盖。
+# builder_user = "ccbuilder"
+# builder_uid = 10010
+# builder_group = "ccbuilder"
+# builder_gid = 10010
+
+# 路径覆盖。若此产品的数据需要单独存放（如大容量磁盘），可在此覆盖。
+# 注意：crbs_root 为机器级配置（由全局 crbs.toml 决定），产品 TOML 中设置会被忽略并告警。
+# result_dir = "/var/lib/crbs/results"
+# shared_layers_dir = "/var/lib/crbs/shared_layers"
+
+# GC 宽限期。若此产品的共享层需要更短或更长的保留时间，可在此覆盖。
+# shared_layer_gc_grace_hours = 168
+
+# 结果目录 GC 宽限期。若此产品的结果目录需要更短或更长的保留时间，可在此覆盖。
+# result_gc_grace_hours = 720
+
+# tmpfs 配置。若此产品的构建特别需要或不需要 tmpfs，可在此覆盖。
+# build_tmpfs = false
+
+# =============================================================================
+# 覆盖层与初始化后命令
+# =============================================================================
+
+# 覆盖层文件目录。init 时会将此目录下的文件递归复制到 base_os（保留权限）。
+# 常用于注入自定义配置文件、证书、yum 插件等。
+# 路径必须在 /etc/crbs/overlays/ 下（安全限制）。
+# overlay_dir = "/etc/crbs/overlays/fedora"
+
+# init 完成后在 chroot 内执行的命令列表。失败时仅 warn 不中止 init。
+# 常用于设置工具链版本、配置 pip/maven 镜像等。
+# [[post_init]]
+# command = "rustup default stable"
+# [[post_init]]
+# command = "pip config set global.index-url https://mirrors.example.com/pypi/simple"
+
+# =============================================================================
+# RPM 宏（与全局合并，产品优先级更高）
+# =============================================================================
+
+# [rpm_macros]
+# dist = ".fc44"
+# _vendor = "FedoraProject"
+# _smp_mflags = "-j8"
+
+# =============================================================================
+# ccache（与全局合并或覆盖）
+# =============================================================================
+
+# 是否启用 ccache。覆盖全局设置。
+# ccache_enabled = true
+
+# ccache 目录。默认 {crbs_root}/ccache/{product}（按产品隔离）。
+# 显式配置时使用该路径，不再追加 product 子目录。
+# ccache_dir = "/var/lib/crbs/ccache/fedora"
+
+# ccache 上限。
+# ccache_max_size = "4G"
+
+# =============================================================================
+# DNF 缓存（与全局合并或覆盖）
+# =============================================================================
+
+# 是否启用 DNF 缓存。覆盖全局设置。
+# dnf_cache_enabled = true
+
+# =============================================================================
+# rpmbuild 目标阶段（与全局合并或覆盖）
+# =============================================================================
+
+# 构建目标。bb=二进制包, bs=源码包, ba=两者。
+# CLI 的 `--target` 选项优先级最高。
+# build_target = "bb"
+
+# =============================================================================
+# 容器后端（与全局合并或覆盖）
+# =============================================================================
+
+# 容器后端。chroot=默认稳定, nspawn（需 systemd-nspawn，支持 cgroup v1/v2）。
+# CLI 的 `--backend` 选项优先级最高。
+# backend = "chroot"
+
+# 资源限制（仅 nspawn backend 生效；chroot 下会被忽略）
+# memory_max = "4G"   # 硬内存上限，格式：数字 + 可选 K/M/G/T
+# cpu_quota = "200%"  # CPU 配额，格式：数字 + 可选 %（200% = 2 核）
+
+# =============================================================================
+# Reproduce（构建幂等性，与全局合并或覆盖）
+# =============================================================================
+
+# 是否记录 provenance 用于 reproduce（覆盖全局）。
+# true = 全部记录，false = 不记录，["pkg1"] = 仅指定包记录。
+# reproduce_enabled = true
+# reproduce_enabled = ["kernel"]
+
+# =============================================================================
+# GPG 签名（与全局合并或覆盖）
+# =============================================================================
+
+# GPG 签名密钥 ID。若此产品使用独立的签名密钥，可在此覆盖。
+# gpg_signing_key_id = "admin@example.com"
+
+# GPG keyring 路径。若此产品的密钥存放在非默认位置，可在此覆盖。
+# gpg_home = "/root/.gnupg"
+
+# =============================================================================
+# Hooks（构建脚本钩子）
+# =============================================================================
+
+# 按 step 名定义 pre/post 脚本片段，自动注入构建脚本。
+# 可用的 step 名：ccache-init, install-srpm, install-deps, build, ccache-summary。
+# 产品 hooks 优先级高于全局 hooks。
+# [hooks.pre]
+# install-srpm = "echo '即将安装 SRPM'"
+#
+# [hooks.post]
+# build = "rpmlint /builddir/RPMS/*/*.rpm || true"

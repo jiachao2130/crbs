@@ -1,0 +1,31 @@
+[package]
+name = "crbs-priv-helper"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+rust-version.workspace = true
+description = "Privileged one-shot helper for CRBS"
+readme = "../../README.md"
+keywords = ["rpm", "build", "privilege", "namespace"]
+categories = ["development-tools::build-utils"]
+
+[dependencies]
+clap = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+toml = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+tempfile = { workspace = true }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+nix = { workspace = true, features = ["mount", "sched", "process", "fs", "dir"] }
+caps = "0.5"
+libc = "0.2"
+
+[lints]
+workspace = true

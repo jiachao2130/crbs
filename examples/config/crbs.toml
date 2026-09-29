@@ -1,0 +1,218 @@
+# crbs 全局配置 — /etc/crbs/crbs.toml（引擎世界）
+#
+# 所有产品共享此配置。产品 TOML（/etc/crbs/products/<product>.toml）可通过同名字段
+# 覆盖其中任意项。优先级：产品 TOML > 全局 TOML > 硬编码默认值。
+#
+# 首次运行 `crbs init <product>` 时，若此文件不存在会自动生成模板。
+#
+# 引擎世界与 server 世界分离：本文件属于引擎世界（crbs CLI 本地构建）。
+# crbs-server 的数据根由 /etc/crbs/server.toml 的 crbs_root 决定（默认
+# /var/lib/crbs），两个世界互不读写对方的状态库与结果目录。
+
+# =============================================================================
+# 路径配置
+# =============================================================================
+
+# 数据根目录（引擎世界）。所有产品数据、共享层、结果、ccache、引擎本地状态库
+# 均在此目录下。机器级配置：产品 TOML 中的 crbs_root 会被忽略并告警。
+# crbs-server 不读本字段；其 root 见 server.toml 的 crbs_root。
+crbs_root = "/var/lib/crbs-engine"
+
+# 构建结果目录。按 {result_dir}/{product}/{pkg_name}/{timestamp-uuid}/ 存放。
+# 未配置时默认 {crbs_root}/results；产品配置可通过 `result_dir` 字段覆盖。
+# result_dir = "/var/lib/crbs-engine/results"
+
+# 共享层存储目录。按 BuildRequires 指纹（blake3 hash）存放可复用的依赖层。
+# 未配置时默认 {crbs_root}/shared_layers；产品配置可通过 `shared_layers_dir` 字段覆盖。
+# shared_layers_dir = "/var/lib/crbs-engine/shared_layers"
+
+# 数据库连接 URL（可选）。
+# 未配置时使用 SQLite（默认 {crbs_root}/crbs.db，即引擎本地状态库）。
+# - SQLite: sqlite:///path/to/crbs.db
+# - PostgreSQL: postgres://user:pass@host/dbname
+# database_url = "sqlite:///var/lib/crbs-engine/crbs.db"
+
+# =============================================================================
+# 构建用户
+# =============================================================================
+
+# 构建用户名称。init 时在 base_os 内通过 `useradd -m` 创建。
+# 该用户用于 chroot 内执行 rpmbuild，避免以 root 构建。
+# shell/debug 场景下，该用户拥有 sudo NOPASSWD 权限，可通过 sudo 提权。
+# 产品配置可通过 `builder_user` 字段覆盖。
+builder_user = "ccbuilder"
+
+# 构建用户 UID。需确保与 Host 侧不冲突。
+# 产品配置可通过 `builder_uid` 字段覆盖。
+builder_uid = 10010
+
+# 构建组名称。
+# 产品配置可通过 `builder_group` 字段覆盖。
+builder_group = "ccbuilder"
+
+# 构建组 GID。
+# 产品配置可通过 `builder_gid` 字段覆盖。
+builder_gid = 10010
+
+# =============================================================================
+# 垃圾回收（GC）
+# =============================================================================
+
+# SharedLayer 宽限期（小时）。当 layer 的 ref_count 降为 0 后，等待此时间再清理。
+# 产品配置可通过 `shared_layer_gc_grace_hours` 字段覆盖。
+shared_layer_gc_grace_hours = 168
+
+# 结果目录宽限期（小时）。构建完成后，结果目录保留此时间再清理。
+# 清理时保留 builds 表记录（仅清空 result_dir 字段），保护 latest 软链接指向的目录。
+# 产品配置可通过 `result_gc_grace_hours` 字段覆盖。
+result_gc_grace_hours = 720
+
+# =============================================================================
+# tmpfs（BUILD 目录内存盘）
+# =============================================================================
+
+# 是否将 BUILD 目录挂载为 tmpfs。适合 IO 密集型构建（如内核编译）。
+# shared_layer=false 时整个 overlay 在 tmpfs；shared_layer=true 时仅 BUILD 目录。
+# 产品配置可通过 `build_tmpfs` 字段覆盖。
+build_tmpfs = false
+
+# =============================================================================
+# 运行时控制
+# =============================================================================
+
+# 默认最大并发构建数。0 表示使用 num_cpus。
+# CLI 的 `--jobs` 选项优先级高于此值。
+max_concurrent_builds = 0
+
+# SharedLayer 创建时 flock 轮询间隔（毫秒）。
+# 当其他进程正在创建同一 SharedLayer 时，当前进程按此间隔轮询检查 .complete 标记。
+shared_layer_poll_interval_ms = 100
+
+# SharedLayer 创建时 flock 等待超时（秒）。
+# 超过此时间仍未获得锁或 .complete 标记，则报错退出。
+shared_layer_timeout_secs = 60
+
+# =============================================================================
+# ccache（C/C++ 编译缓存）
+# =============================================================================
+
+# 是否启用 ccache。启用后自动在 base_packages 中追加 ccache，
+# 并在 chroot 内创建 /usr/lib64/ccache/ 符号链接。
+# 产品配置可通过 `ccache_enabled` 字段覆盖。
+ccache_enabled = false
+
+# ccache 目录。未配置时默认为 {crbs_root}/ccache/{product}（按产品隔离）。
+# 全局配置通常不需要显式设置此字段；如需在产品配置中覆盖，建议指定带产品名的路径。
+# ccache_dir = "/var/lib/crbs/ccache"
+
+# ccache 上限。
+# 产品配置可通过 `ccache_max_size` 字段覆盖。
+ccache_max_size = "4G"
+
+# =============================================================================
+# DNF 缓存
+# =============================================================================
+
+# 是否启用 DNF 缓存。启用后 bind mount Host 的缓存目录到 chroot 内
+# （覆盖 /var/cache/dnf 和 /var/cache/libdnf5）。
+# 产品配置可通过 `dnf_cache_enabled` 字段覆盖。
+dnf_cache_enabled = false
+
+# =============================================================================
+# rpmbuild 目标阶段
+# =============================================================================
+
+# 默认构建目标。bb=二进制包, bs=源码包, ba=两者。
+# CLI 的 `--stage` 选项优先级高于此值（`--target` 是微架构钉定旗标且与
+# `--arches` 互斥，与此项无关）。
+# 产品配置可通过 `build_target` 字段覆盖。
+build_target = "bb"
+
+# =============================================================================
+# 容器后端
+# =============================================================================
+
+# 默认容器后端。nspawn=默认（需 systemd-nspawn，支持 cgroup v1/v2），chroot=兼容所有 Linux 主机。
+# CLI 的 `--backend` 选项优先级高于此值。
+# 产品配置可通过 `backend` 字段覆盖。
+backend = "nspawn"
+
+# 资源限制（仅 nspawn backend 生效；chroot 下会被忽略）
+# memory_max = "4G"   # 硬内存上限，格式：数字 + 可选 K/M/G/T
+# cpu_quota = "200%"  # CPU 配额，格式：数字 + 可选 %（200% = 2 核）
+
+# =============================================================================
+# GPG 签名
+# =============================================================================
+
+# GPG 签名密钥 ID（邮箱或指纹）。设置后构建完成时自动对 RPM 签名。
+# 私钥在 Host 侧，不进入构建容器。
+# 产品配置可通过 `gpg_signing_key_id` 字段覆盖。
+# gpg_signing_key_id = "admin@example.com"
+
+# GPG keyring 路径（绝对路径）。默认使用当前用户（root）的默认 keyring。
+# 产品配置可通过 `gpg_home` 字段覆盖。
+# gpg_home = "/root/.gnupg"
+
+# =============================================================================
+# Reproduce（构建幂等性）
+# =============================================================================
+
+# 是否记录 provenance（URL、SHA256、build_packages.json）用于 `crbs reproduce`。
+# true = 全部记录，false = 不记录（默认），["pkg1"] = 仅指定包记录。
+# 关闭后构建会跳过 URL 解析、package_cache 复制和 build_packages.json 写入。
+# reproduce_enabled = false
+
+# =============================================================================
+# Hooks（构建脚本钩子）
+# =============================================================================
+
+# 按 step 名定义 pre/post 脚本片段，自动注入构建脚本。
+# 可用的 step 名：ccache-init, install-srpm, install-deps, build, ccache-summary。
+# 产品配置中的 hooks 会与此处合并，产品优先级更高。
+# [hooks.pre]
+# install-srpm = "echo '即将安装 SRPM'"
+# build = "echo '开始构建'"
+#
+# [hooks.post]
+# build = "rpmlint /builddir/RPMS/*/*.rpm || true"
+
+# =============================================================================
+# Remote（客户端远程构建）
+# =============================================================================
+
+# 以下配置仅在 `crbs build --remote` 时被客户端读取；crbs-server 会忽略此段。
+# 推荐放在用户级配置文件 ~/.config/crbs/crbs.toml 中，避免把 token 放在 /etc/crbs。
+
+# [remote]
+# # 默认使用的远程 profile 名称。可设置为某个 profile 名，或 "local"。
+# # 未配置或配置为 "local" 时，默认走本地直接构建。
+# default = "worktop"
+#
+# [[remote.profiles]]
+# name = "worktop"
+# url = "http://crbs-worktop.example.com:9090"
+# # 推荐从环境变量读取 token，避免明文落盘。
+# token_env = "CRBS_WORKTOP_TOKEN"
+#
+# [[remote.profiles]]
+# name = "lab"
+# url = "https://crbs-lab.example.com"
+# token_file = "~/.crbs/lab.token"
+# # 自签 / 内网 CA 的 hub 必配 CA 证书，否则 TLS 校验失败；
+# # 对应 `crbs remote add --ca-cert <PATH>`。
+# ca_cert = "/etc/crbs/certs/ca.crt"
+#
+# 提示：本段可直接用 `crbs remote add` 生成（写入用户级配置并保留已有注释
+# 与格式）；profile 的删除与就地编辑仍直接改本文件。
+
+# =============================================================================
+# RPM 宏
+# =============================================================================
+
+# 全局 RPM 宏。rpmbuild 时通过 `--define` 传入。
+# 注意：_topdir 强制为 /builddir（不可覆盖），_smp_mflags 默认 -j$(nproc)。
+# 产品配置中的 `rpm_macros` 会与此处合并，产品优先级更高。
+[rpm_macros]
+# dist = ".el9"
+# _vendor = "ExampleCorp"
