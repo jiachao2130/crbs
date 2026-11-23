@@ -1,0 +1,13 @@
+diff -ruN '--exclude=.cargo-ok' '--exclude=.gitignore' a/vendor/rustix-0.38.44/src/ioctl/linux.rs b/vendor/rustix-0.38.44/src/ioctl/linux.rs
+--- a/vendor/rustix-0.38.44/src/ioctl/linux.rs	2026-10-06 09:25:33.969797113 +0800
++++ b/vendor/rustix-0.38.44/src/ioctl/linux.rs	2026-10-06 09:25:33.976909006 +0800
+@@ -71,7 +71,8 @@
+     target_arch = "powerpc",
+     target_arch = "powerpc64",
+     target_arch = "sparc",
+-    target_arch = "sparc64"
++    target_arch = "sparc64",
++    target_arch = "sw64"
+ ))]
+ mod consts {
+     use super::RawOpcode;

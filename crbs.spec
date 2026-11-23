@@ -2,7 +2,7 @@
 # Build: rpmbuild -ba crbs.spec
 # From SRPM: rpmbuild --rebuild crbs-<version>-<release>.src.rpm
 #
-# 源码包不含 vendor：%build 按 Cargo.lock 拉取依赖并编译。
+# 源码包不含 vendor：%build 按 Cargo.lock 拉取依赖并应用 sw64 补丁后离线构建。
 # 根 Cargo.toml 的 version 是唯一版本源，本 spec 的 Version 镜像之。
 
 %global debug_package %{nil}
@@ -19,12 +19,23 @@ License:        MulanPSL-2.0
 URL:            https://gitcode.com/jiachao2130/crbs.git
 Source0:        %{name}-%{version}.tar.gz
 
+# sw_64（申威）架构支持：为 vendored 依赖补齐 ABI 定义（errno/signal/termios
+# 编号、syscall 号、ioctl 编码等）。补丁在 %build 拉取 vendor 后应用。
+Patch1:         libc-0.2.186-sw64.patch
+Patch2:         linux-raw-sys-0.12.1-sw64.patch
+Patch3:         linux-raw-sys-0.4.15-sw64.patch
+Patch4:         rustix-1.1.4-sw64.patch
+Patch5:         rustix-0.38.44-sw64.patch
+Patch6:         caps-0.5.6-sw64.patch
+Patch7:         nix-0.29.0-sw64.patch
+
 # Rust toolchain
 BuildRequires:  rust >= 1.82
 BuildRequires:  cargo
 BuildRequires:  gcc
 # libsqlite3-sys 经 pkg-config 动态链接系统 sqlite
 BuildRequires:  pkgconfig(sqlite3)
+BuildRequires:  patch
 BuildRequires:  systemd-rpm-macros
 
 # Runtime deps
@@ -77,13 +88,40 @@ on behalf of the main crbs and crbs-server processes.
 # rpmbuild 会把 spec 脚本作为 stdin 传给 cargo，rustc 读到非 UTF-8 输入会失败
 exec < /dev/null
 
-# 按 Cargo.lock 拉取依赖并编译（可使用本机配置的 cargo 镜像）。
-cargo build --release --locked --workspace%{?with_postgres: --features crbs-core/postgres,crbs-server/postgres}
+# 源码包不含 vendor：按 Cargo.lock 拉取依赖（可使用本机配置的 cargo 镜像），
+# 再应用 sw64 补丁。补丁修改了 vendored 源码，清空对应 crate 的文件级校验。
+cargo vendor --locked --respect-source-config vendor
+patch -s -p1 < %{PATCH1}
+patch -s -p1 < %{PATCH2}
+patch -s -p1 < %{PATCH3}
+patch -s -p1 < %{PATCH4}
+patch -s -p1 < %{PATCH5}
+patch -s -p1 < %{PATCH6}
+patch -s -p1 < %{PATCH7}
+for d in libc linux-raw-sys linux-raw-sys-0.4.15 rustix rustix-0.38.44 caps nix; do
+    sed -i 's/"files":{[^}]*}/"files":{}/' "vendor/$d/.cargo-checksum.json"
+done
+
+mkdir -p .cargo
+cat > .cargo/config.toml <<'EOF'
+[source.crates-io]
+replace-with = "vendored-sources"
+
+[source.vendored-sources]
+directory = "vendor"
+EOF
+
+%ifarch sw_64
+# sw64 的 GNU ld 在 thin LTO 链接时堆损坏；构建可用性优先，关闭 LTO
+export CARGO_PROFILE_RELEASE_LTO=off
+%endif
+
+cargo build --release --locked --offline --workspace%{?with_postgres: --features crbs-core/postgres,crbs-server/postgres}
 
 # crbs-normalize 全静态构建，供引擎注入任意 libc 的产品沙箱。
 # x86_64 须 -no-pie：crt-static 默认产出 static-pie，自重定位在部分 CPU 上启动即段错误。
 RUSTFLAGS="-C target-feature=+crt-static -C link-arg=-no-pie -C link-arg=-static -C link-arg=-lpthread -C link-arg=-ldl" \
-    cargo build --release --locked -p crbs-normalize
+    cargo build --release --locked --offline -p crbs-normalize
 
 %install
 install -D -m 0755 target/release/crbs       %{buildroot}%{_bindir}/crbs

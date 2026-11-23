@@ -1,0 +1,15 @@
+diff -ruN '--exclude=.cargo-ok' '--exclude=.gitignore' a/vendor/caps/src/nr.rs b/vendor/caps/src/nr.rs
+--- a/vendor/caps/src/nr.rs	2026-10-06 10:32:06.326063496 +0800
++++ b/vendor/caps/src/nr.rs	2026-10-06 10:32:06.327447537 +0800
+@@ -66,6 +66,11 @@
+ #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+ pub const CAPSET: i64 = 126;
+ 
++#[cfg(target_arch = "sw64")]
++pub const CAPGET: i64 = 368;
++#[cfg(target_arch = "sw64")]
++pub const CAPSET: i64 = 369;
++
+ #[cfg(all(target_arch = "x86_64", target_pointer_width = "32"))]
+ pub const CAPGET: i32 = 0x40000000 + 125;
+ #[cfg(all(target_arch = "x86_64", target_pointer_width = "32"))]
